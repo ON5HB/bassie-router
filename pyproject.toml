@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bassie-router"
+version = "0.1.47"
+description = "Bassie-Router: routercontroller voor Debian 13 (PPPoE-client, WAN-VLAN, nftables, dnsmasq, HTTP-GUI)"
+requires-python = ">=3.11"
+dependencies = ["Flask>=3.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+bassie-router = "bassierouter.cli:main"
+routerctl = "bassierouter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

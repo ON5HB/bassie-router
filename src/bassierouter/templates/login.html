@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Aanmelden{% endblock %}
+{% block content %}
+<h1>Aanmelden</h1>
+<section class="card login-card">
+  <p>Meld je aan met <code>root</code> en hetzelfde wachtwoord als bij SSH via
+  PAM. De sessie blijft {{ session_minutes }} minuten geldig.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="row">
+      <label>Gebruikersnaam <input name="username" value="root" autocomplete="username" required></label>
+      <label>Wachtwoord <input name="password" type="password" autocomplete="current-password" required></label>
+    </div>
+    <button type="submit" class="primary">Aanmelden</button>
+  </form>
+</section>
+{% endblock %}

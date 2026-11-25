@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Toepassen{% endblock %}
+{% block content %}
+<h1>Configuratie toepassen</h1>
+
+{% if pending_changes %}
+<div class="flash error">
+  <strong>Nog NIET actief.</strong> Je kijkt nu alleen naar wat er zou gebeuren.
+  Klik onderaan op <strong>Wijzigingen Opslaan</strong> om dit écht door te voeren.
+</div>
+{% else %}
+<div class="flash ok">
+  <strong>Wél actief.</strong> Deze instellingen draaien nu; er is niets meer toe te passen.
+</div>
+{% endif %}
+
+{% if not cfg.bootstrapped %}
+<div class="flash error">
+  <strong>Let op bij de eerste keer toepassen:</strong>
+  de gekozen WAN-poort (<code>{{ cfg.interfaces.wan }}</code>) stopt met LAN te zijn.
+  Sluit je PC nu aan op een <strong>andere poort</strong>{% if cfg.interfaces.lan_ports %}, bijvoorbeeld <code>{{ cfg.interfaces.lan_ports[0] }}</code>{% endif %}.
+  {% if cfg.interfaces.dhcp_enabled %}
+  De router wordt zelf DHCP-server met zijn ingestelde LAN-IP
+  <code>{{ cfg.interfaces.lan_ip }}</code>. Open de GUI daarna op
+  <code>http://{{ cfg.interfaces.lan_ip }}:{{ cfg.gui.port }}</code>.
+  {% else %}
+  De router blijft DHCP-klant en houdt het adres dat hij van de bestaande
+  DHCP-server krijgt (nu <code>{{ cfg.gui.bind }}</code>). De GUI blijft dus
+  bereikbaar op <code>http://{{ cfg.gui.bind }}:{{ cfg.gui.port }}</code>.
+  {% endif %}
+  Op de oude WAN-poort werkt de GUI dan niet meer.
+</div>
+{% endif %}
+
+{% if not cfg.interfaces.dhcp_enabled %}
+<div class="flash warning">
+  <strong>DHCP-server is uit.</strong> De router geeft zelf geen adressen uit en
+  blijft er een van een andere DHCP-server krijgen. Zet bij
+  <a href="{{ url_for('network') }}">Netwerk → DHCP-server aan</a> als deze
+  router het LAN zelf moet bedienen.
+</div>
+{% endif %}
+
+{% if report.errors %}
+  <div class="flash error">
+    <strong>Toepassen niet mogelijk:</strong>
+    <ul>{% for error in report.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+{% for check in report.checks %}<div class="flash ok">{{ check }}</div>{% endfor %}
+
+<section class="card">
+  <h2>Wat gebeurt er</h2>
+  <ol>
+    {% for command in report.commands %}<li><code>{{ command }}</code></li>{% endfor %}
+  </ol>
+  {% if report.backup %}<p>Backup vóór wijziging: <code>{{ report.backup }}</code></p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>nftables-regels (IPv4)</h2>
+  <pre>{{ report.files.get('/etc/nftables.conf', '') }}</pre>
+</section>
+
+<div class="actions">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="apply">
+    <button type="submit" class="primary" {{ 'disabled' if not report.ok }}>Wijzigingen Opslaan</button>
+  </form>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="discard">
+    <button type="submit" class="danger">Negeren</button>
+  </form>
+</div>
+{% endblock %}

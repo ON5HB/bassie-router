@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Netwerk{% endblock %}
+{% block content %}
+<h1>Netwerk (IPv4)</h1>
+<p>Alle fysieke poorten zijn in één bridge en gedragen zich als een switch. De WAN-poort en de provider-gegevens staan bij <strong>Provider</strong>; alle overige poorten blijven hier LAN. De WAN-poort gaat naar een modem in bridge-mode of naar een Fiber ONT — welk merk dan ook.</p>
+{% if not cfg.bootstrapped %}
+<div class="card">
+  <h2>Initiele setup</h2>
+  <p>De router heeft nog geen WAN-poort. Alle poorten zijn nu LAN en de bridge heeft het DHCP-adres <code>{{ cfg.gui.bind }}</code> uit het bestaande netwerk, zodat je deze GUI kunt bereiken. Kies bij <a href="{{ url_for('pppoe') }}"><strong>Provider → WAN &amp; VLAN</strong></a> de poort die WAN moet worden en klik daarna op <strong>Toepassen nu</strong>.</p>
+  <p><strong>Sluit je PC vóór Toepassen nu aan op een andere poort</strong> dan de gekozen WAN-poort. Op de WAN-poort werkt de GUI daarna niet meer.{% if cfg.interfaces.dhcp_enabled %} De router geeft dan zelf adressen uit in het ingestelde LAN (<code>{{ cfg.interfaces.lan_ip }}</code>).{% else %} Met DHCP-server uit blijft de router adres van de bestaande DHCP-server krijgen.{% endif %}</p>
+</div>
+{% endif %}
+<form method="post" data-dirty-actions>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="next" value="network">
+  <section class="card">
+    <h2>Identiteit</h2>
+    <div class="row">
+      <label>Hostname <input name="hostname" value="{{ cfg.hostname }}" required></label>
+    </div>
+    <p class="hint">Wordt na Toepassen nu in <code>/etc/hostname</code> en <code>/etc/hosts</code> gezet. Het SSH-welkomstbericht toont ook de GUI-locatie.</p>
+  </section>
+
+  <section class="card">
+    <h2>LAN-bridge</h2>
+    <div class="row">
+      <label>LAN-poorten (meerdere kiezen met Ctrl)
+        <select name="lan_ports" id="lan_ports" multiple size="6" required>
+          {% for iface in interfaces if iface != cfg.interfaces.lan_bridge and iface != cfg.interfaces.wan %}
+            <option value="{{ iface }}" {{ 'selected' if iface in cfg.interfaces.lan_ports }}>{{ iface }}</option>
+          {% endfor %}
+          {% for port in cfg.interfaces.lan_ports if port not in interfaces %}
+            <option value="{{ port }}" selected>{{ port }} (niet aanwezig)</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Bridgenaam <input name="lan_bridge" value="{{ cfg.interfaces.lan_bridge }}" required></label>
+    </div>
+    <p class="hint">Bijvoorbeeld <code>br0</code> of <code>switch</code>. Alle scripts gebruiken dezelfde naam. De gekozen LAN-poorten gedragen zich als één switch.</p>
+    <div class="row">
+      <label>LAN-IP <input name="lan_ip" value="{{ cfg.interfaces.lan_ip }}" required></label>
+      <label>Prefix <input name="lan_prefix" type="number" min="1" max="32" value="{{ cfg.interfaces.lan_prefix }}" required></label>
+    </div>
+    {% if not cfg.interfaces.dhcp_enabled %}<p class="hint">Dit LAN-IP is alleen een instelling en wordt nu niet gebruikt: de router haalt zelf een adres bij een andere DHCP-server (<code>{{ cfg.gui.bind }}</code>).</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h2>DHCP &amp; DNS (dnsmasq)</h2>
+    <p><label class="inline"><input type="checkbox" name="dhcp_enabled" {{ 'checked' if cfg.interfaces.dhcp_enabled }}> DHCP-server aan</label></p>
+    <p class="hint">Standaard uit. Zet dit aan zodra de router het LAN zelf van adressen moet voorzien; anders blijft de router DHCP-klant op een bestaand netwerk en krijgen LAN-clients geen adres van deze router.</p>
+    <div class="row">
+      <label>DHCP-start <input name="dhcp_start" value="{{ cfg.interfaces.dhcp_start }}" required></label>
+      <label>DHCP-eind <input name="dhcp_end" value="{{ cfg.interfaces.dhcp_end }}" required></label>
+      <label>Lease <input name="dhcp_lease" value="{{ cfg.interfaces.dhcp_lease }}"></label>
+    </div>
+    <div class="row">
+      <label>Lokaal domein <input name="dns_domain" value="{{ cfg.interfaces.dns_domain }}"></label>
+      <label>Upstream DNS (komma-gescheiden) <input name="dns_upstream" value="{{ cfg.interfaces.dns_upstream|join(', ') }}"></label>
+    </div>
+  </section>
+  <section class="card">
+    <h2>GUI-bereik</h2>
+    <div class="row">
+      <label>Luister op
+        <select name="gui_bind">
+          <option value="127.0.0.1" {{ 'selected' if cfg.gui.bind == '127.0.0.1' }}>Alleen lokaal (127.0.0.1)</option>
+          <option value="{{ cfg.interfaces.lan_ip }}" {{ 'selected' if cfg.gui.bind != '127.0.0.1' }}>LAN ({{ cfg.interfaces.lan_ip }})</option>
+          {% if cfg.gui.bind not in ('127.0.0.1', cfg.interfaces.lan_ip) %}
+            <option value="{{ cfg.gui.bind }}" selected>{{ cfg.gui.bind }} (huidig{% if not cfg.interfaces.dhcp_enabled %}, van DHCP-server{% endif %})</option>
+          {% endif %}
+        </select>
+      </label>
+      <label>Poort <input name="gui_port" type="number" min="1" max="65535" value="{{ cfg.gui.port }}"></label>
+    </div>
+    <p class="hint">De GUI luistert nooit op WAN.{% if cfg.interfaces.dhcp_enabled %} Met DHCP-server aan verhuist hij na Toepassen nu naar het ingestelde LAN-IP <code>{{ cfg.interfaces.lan_ip }}</code>.{% else %} Met DHCP-server uit blijft hij luisteren op het adres van de externe DHCP-server (<code>{{ cfg.gui.bind }}</code>).{% endif %} Aanmelden met <code>root</code> + je SSH-wachtwoord; de sessie is 30 minuten geldig.</p>
+  </section>
+  <div class="actions" data-form-actions hidden>
+    <button type="submit" class="primary">Wijzigingen Opslaan</button>
+    <button type="submit" class="danger" formnovalidate formaction="{{ url_for('discard') }}">Negeren</button>
+  </div>
+  <p class="hint">De knoppen verschijnen zodra je iets wijzigt. Opslaan bewaart én voert meteen toe; Negeren zet alles terug naar de laatst toegepaste stand.</p>
+</form>
+<script>
+(function () {
+  var wan = document.getElementById('wan_select');
+  var lan = document.getElementById('lan_ports');
+  if (!wan || !lan) return;
+  function sync() {
+    Array.prototype.forEach.call(lan.options, function (option) {
+      var isWan = option.value === wan.value;
+      option.selected = option.selected && !isWan;
+      option.disabled = isWan;
+    });
+  }
+  wan.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{% endblock %}

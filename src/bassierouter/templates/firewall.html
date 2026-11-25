@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Firewall{% endblock %}
+{% block content %}
+<h1>Firewall &amp; portforwards</h1>
+<p>Standaard: <strong>WAN → LAN dicht</strong>, <strong>LAN → WAN open</strong> via NAT. Alleen onderstaande forwards openen een poort van buitenaf.</p>
+<form method="post" data-dirty-actions>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="next" value="firewall">
+  <section class="card">
+    <h2>Beleid</h2>
+    <div class="row">
+      <label>WAN input policy
+        <select name="wan_policy">
+          <option value="drop" {{ 'selected' if cfg.firewall.wan_input_policy == 'drop' }}>drop (aanbevolen)</option>
+          <option value="accept" {{ 'selected' if cfg.firewall.wan_input_policy == 'accept' }}>accept</option>
+        </select>
+      </label>
+      <label>UDP NAT-timeout (s, 0 = uit)
+        <input name="udp_nat_timeout" type="number" min="0" max="86400" value="{{ cfg.firewall.udp_nat_timeout }}">
+      </label>
+      <label>No-track UDP-poorten (komma-gescheiden)
+        <input name="no_track_udp_ports" value="{{ cfg.firewall.no_track_udp_ports|join(', ') }}" placeholder="bijv. 123 voor NTP">
+      </label>
+    </div>
+    <p class="hint">No-track geldt voor verkeer van/naar de router zelf (bijv. NTP). Poorten die ook als UDP-forward staan ingesteld, kunnen geen no-track zijn.</p>
+    <p>
+      <label class="inline"><input type="checkbox" name="allow_ping" {{ 'checked' if cfg.firewall.allow_ping_wan }}> Ping op WAN toestaan</label>
+      <label class="inline"><input type="checkbox" name="allow_ssh_lan" {{ 'checked' if cfg.firewall.allow_ssh_lan }}> SSH vanuit LAN</label>
+      <label class="inline"><input type="checkbox" name="allow_dns_lan" {{ 'checked' if cfg.firewall.allow_dns_dhcp_lan }}> DNS/DHCP vanuit LAN</label>
+      <label class="inline"><input type="checkbox" name="allow_gui_lan" {{ 'checked' if cfg.firewall.allow_gui_lan }}> GUI ({{ cfg.gui.port }}) vanuit LAN</label>
+      <label class="inline"><input type="checkbox" name="force_lan_dns_via_router" {{ 'checked' if cfg.firewall.force_lan_dns_via_router }}> DNS van LAN altijd via router</label>
+    </p>
+    {% set dns_check = consistency|selectattr('name', 'equalto', 'DNS van LAN via router')|first %}
+    {% if dns_check and not dns_check.ok %}
+    <div class="flash warning">
+      <strong>Let op: {{ dns_check.detail }}.</strong> De opgeslagen stand en de
+      actieve firewallregels wijken af. Sla de instellingen op om ze gelijk te
+      maken, of controleer of nftables is herladen.
+    </div>
+    {% endif %}
+    <p class="hint">Met <strong>DNS van LAN altijd via router</strong> kunnen klanten geen externe DNS-server rechtstreeks vragen; de router bepaalt de forward. Daarmee is latere DNS-filtering mogelijk. Zet dit alleen uit als klanten zelf een DNS-server moeten kiezen.</p>
+  </section>
+
+  <section class="card">
+    <h2>Portforwards — WAN + poort → LAN-IP + poort</h2>
+    <table>
+      <thead>
+        <tr><th>Verwijder</th><th>Naam</th><th>Protocol</th><th>WAN-poort</th><th>LAN-IP</th><th>LAN-poort</th><th>Bron (optioneel)</th><th>UDP-timeout (s)</th></tr>
+      </thead>
+      <tbody>
+      {% for rule in cfg.firewall.forwards %}
+        <tr>
+          <td><input type="checkbox" name="fwd_delete_{{ loop.index0 }}"></td>
+          <td><input name="fwd_name_{{ loop.index0 }}" value="{{ rule.name }}"></td>
+          <td>
+            <select name="fwd_protocol_{{ loop.index0 }}">
+              <option value="tcp" {{ 'selected' if rule.protocol == 'tcp' }}>tcp</option>
+              <option value="udp" {{ 'selected' if rule.protocol == 'udp' }}>udp</option>
+            </select>
+          </td>
+          <td><input name="fwd_external_{{ loop.index0 }}" type="number" min="1" max="65535" value="{{ rule.external_port }}"></td>
+          <td><input name="fwd_ip_{{ loop.index0 }}" value="{{ rule.internal_ip }}"></td>
+          <td><input name="fwd_internal_{{ loop.index0 }}" type="number" min="1" max="65535" value="{{ rule.internal_port }}"></td>
+          <td><input name="fwd_source_{{ loop.index0 }}" value="{{ rule.source }}" placeholder="any of CIDR"></td>
+          <td><input name="fwd_udp_timeout_{{ loop.index0 }}" type="number" min="0" max="86400" value="{{ rule.udp_timeout }}" placeholder="0 = globaal"></td>
+        </tr>
+      {% endfor %}
+        <tr class="new-row">
+          <td>nieuw</td>
+          <td><input name="new_fwd_name" placeholder="naam"></td>
+          <td>
+            <select name="new_fwd_protocol">
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+            </select>
+          </td>
+          <td><input name="new_fwd_external" type="number" min="1" max="65535" placeholder="bijv. 8080"></td>
+          <td><input name="new_fwd_ip" placeholder="192.168.88.10"></td>
+          <td><input name="new_fwd_internal" type="number" min="1" max="65535" placeholder="80"></td>
+          <td><input name="new_fwd_source" placeholder="any of 1.2.3.0/24"></td>
+          <td><input name="new_fwd_udp_timeout" type="number" min="0" max="86400" placeholder="bijv. 1"></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="hint">Laat bron op <code>any</code> staan voor iedereen, of vul een IPv4-netwerk in om alleen dat netwerk toe te staan. Bij een UDP-server achter NAT (bijv. NTP) kun je een korte timeout van <code>1</code> seconde zetten; volledige <code>notrack</code> kan niet met DNAT.</p>
+  </section>
+  <div class="actions" data-form-actions hidden>
+    <button type="submit" class="primary">Wijzigingen Opslaan</button>
+    <button type="submit" class="danger" formnovalidate formaction="{{ url_for('discard') }}">Negeren</button>
+  </div>
+  <p class="hint">De knoppen verschijnen zodra je iets wijzigt. Opslaan bewaart én voert meteen toe; Negeren zet alles terug naar de laatst toegepaste stand.</p>
+</form>
+{% endblock %}

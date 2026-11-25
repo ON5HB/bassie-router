@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "bootstrapped": false,
+  "hostname": "bassie-router",
+  "interfaces": {
+    "wan": "eth0",
+    "wan_vlan_id": null,
+    "wan_mode": "pppoe",
+    "wan_static_ip": "",
+    "wan_static_prefix": 24,
+    "wan_static_gateway": "",
+    "wan_static_dns": [],
+    "lan_ports": ["eth1"],
+    "lan_bridge": "switch",
+    "lan_ip": "192.168.88.1",
+    "lan_prefix": 24,
+    "dhcp_enabled": false,
+    "dhcp_start": "192.168.88.100",
+    "dhcp_end": "192.168.88.250",
+    "dhcp_lease": "12h",
+    "dns_domain": "lan",
+    "dns_upstream": ["1.1.1.1", "8.8.8.8"]
+  },
+  "pppoe_client": {
+    "enabled": false,
+    "interface": "",
+    "username": "",
+    "password": "",
+    "service_name": "",
+    "usepeerdns": true,
+    "mtu": 1492,
+    "demand": false
+  },
+  "firewall": {
+    "wan_input_policy": "drop",
+    "allow_ping_wan": true,
+    "allow_ssh_lan": true,
+    "allow_dns_dhcp_lan": true,
+    "allow_gui_lan": true,
+    "allow_gui_bootstrap": true,
+    "udp_nat_timeout": 30,
+    "no_track_udp_ports": [],
+    "forwards": []
+  },
+  "gui": {
+    "bind": "192.168.88.1",
+    "port": 8080
+  },
+  "system": {
+    "cpu_governor": "powersave",
+    "cpu_min_mhz": 800,
+    "cpu_max_mhz": 1600
+  }
+}

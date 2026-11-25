@@ -1,0 +1,67 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #fff;
+  --ink: #1d2430;
+  --muted: #6b7280;
+  --line: #dfe3e8;
+  --accent: #1f6feb;
+  --ok: #0f5c39;
+  --err: #b42318;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+header { background: #12203a; color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 18px; letter-spacing: .2px; }
+nav { display: flex; gap: 6px; flex-wrap: wrap; }
+nav a { color: #cbd7ee; text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+nav a:hover { background: #1e3255; color: #fff; }
+nav a.primary { background: var(--accent); color: #fff; }
+.version-badge { margin-left: auto; color: #cbd7ee; font-size: 12px; white-space: nowrap; }
+.logout-form { margin: 0; }
+.link-button { background: none; color: #cbd7ee; padding: 6px 8px; font-size: 13px; }
+.link-button:hover { background: #1e3255; }
+.login-card { max-width: 460px; }
+main { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+h1 { font-size: 24px; margin: 0 0 18px; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+h3 { font-size: 15px; margin: 18px 0 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 0 0 16px; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+label { display: block; font-size: 13px; color: var(--muted); flex: 1 1 180px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; color: var(--ink); font-size: 14px; }
+input, select { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
+input[type=checkbox] { width: auto; margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; }
+td input { margin: 0; min-width: 90px; }
+dt { color: var(--muted); font-size: 13px; }
+dd { margin: 0 0 8px; font-weight: 500; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+pre { background: #f7f8fa; border: 1px solid var(--line); border-radius: 6px; padding: 12px; overflow-x: auto; max-height: 420px; }
+button, .button { display: inline-block; cursor: pointer; border: 0; border-radius: 6px; padding: 9px 16px; background: var(--accent); color: #fff; font: inherit; text-decoration: none; }
+button:hover { filter: brightness(1.08); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.danger { background: var(--err); }
+.button:hover { filter: brightness(1.08); }
+.upload { display: flex; align-items: center; gap: 10px; }
+.file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.file-input:focus + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.confirm-dialog { max-width: 380px; border: 1px solid var(--line); border-radius: 10px; padding: 20px; box-shadow: 0 12px 32px rgba(0, 0, 0, .25); }
+.confirm-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.confirm-dialog .actions { justify-content: flex-end; margin-top: 16px; }
+.actions { display: flex; gap: 12px; }
+[hidden] { display: none !important; }
+.flash { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; background: #e8f1ff; border: 1px solid #b9d3ff; }
+.flash.error { background: #fdecea; border-color: #f5b7b1; color: var(--err); }
+.flash.warning { background: #fff6e5; border-color: #f0d59a; color: #8a5b00; }
+.flash .actions { margin-top: 8px; align-items: center; }
+.flash .actions form { margin: 0; }
+.flash.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.ok-text { color: var(--ok); font-weight: 600; }
+.hot-text { color: #c2410c; font-weight: 600; }
+.muted { color: var(--muted); }
+.hint { color: var(--muted); font-size: 13px; }
+.new-row { background: #f0f6ff; }
+footer { max-width: 1100px; margin: 0 auto; padding: 16px 20px 30px; color: var(--muted); font-size: 12px; }

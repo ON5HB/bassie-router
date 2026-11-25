@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block content %}
+<h1>Status</h1>
+
+{% if errors %}
+  <div class="flash error">
+    De configuratie bevat {{ errors|length }} fout(en):
+    <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+{% if not cfg.interfaces.dhcp_enabled %}
+  <div class="flash warning">
+    <strong>DHCP-server uit.</strong> De router krijgt zelf een adres van een
+    andere DHCP-server (<code>{{ cfg.gui.bind }}</code>) en geeft geen adressen
+    uit. Zet <a href="{{ url_for('network') }}">Netwerk → DHCP-server aan</a>
+    als deze router het LAN zelf moet bedienen.
+  </div>
+{% endif %}
+
+{% if consistency %}
+<section class="card">
+  <h2>Configuratie-controle</h2>
+  <table>
+    <thead><tr><th>Onderdeel</th><th>Config / actief</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for check in consistency %}
+      <tr>
+        <td>{{ check.name }}</td>
+        <td class="muted">{{ check.detail }}</td>
+        <td class="{{ 'ok-text' if check.ok else 'hot-text' }}">{{ 'klopt' if check.ok else 'WIJKT AF' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="hint">Deze tabel vergelijkt de opgeslagen instellingen met wat er echt actief is op de router. Bij <strong>WIJKT AF</strong> eerst opslaan, of controleren of nftables is herladen.</p>
+</section>
+{% endif %}
+
+<div class="grid">
+  <section class="card">
+    <h2>Interfaces</h2>
+    <dl>
+      <dt>WAN (provider)</dt><dd><code>{{ state.wan }}</code></dd>
+      <dt>WAN-adres</dt><dd>{% if cfg.interfaces.wan_mode == 'pppoe' %}via PPPoE (<code>ppp0</code>){% elif cfg.interfaces.wan_mode == 'dhcp' %}DHCP-client op <code>{{ cfg.interfaces.wan_iface }}</code>{% else %}<code>{{ cfg.interfaces.wan_static_ip }}/{{ cfg.interfaces.wan_static_prefix }}</code>, gateway <code>{{ cfg.interfaces.wan_static_gateway }}</code>{% endif %}</dd>
+      <dt>LAN-bridge</dt><dd><code>{{ state.lan }}</code></dd>
+      {% if cfg.interfaces.dhcp_enabled %}
+      <dt>LAN-IP</dt><dd><code>{{ lan_ip_display }}</code>/{{ cfg.interfaces.lan_prefix }} ({{ lan_ip_note }})</dd>
+      {% else %}
+      <dt>LAN-adres</dt><dd><code>{{ lan_ip_display }}</code> ({{ lan_ip_note }})</dd>
+      {% endif %}
+      <dt>GUI luistert op</dt><dd><code>{{ cfg.gui.bind }}:{{ cfg.gui.port }}</code></dd>
+      <dt>LAN-poorten</dt><dd>{{ cfg.interfaces.lan_ports|join(', ') }}</dd>
+      <dt>WAN-VLAN</dt><dd>{% if cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }}{% else %}geen (untagged){% endif %}</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Provider</h2>
+    <dl>
+      <dt>PPPoE-client</dt><dd>{{ 'aan' if cfg.pppoe_client.enabled else 'uit' }}</dd>
+      <dt>Account</dt><dd><code>{{ cfg.pppoe_client.username or '-' }}</code></dd>
+      <dt>Provider VLAN</dt><dd>{% if cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }}{% else %}geen (untagged){% endif %}</dd>
+      <dt>Actieve ppp-links</dt><dd>{{ state.ppp_interfaces|join(', ') or 'geen' }}</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Services</h2>
+    <table>
+      {% for unit, active in state.services.items() %}
+        <tr><td><code>{{ unit }}</code></td><td class="{{ 'ok-text' if active == 'active' else 'muted' }}">{{ active }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+  <section class="card">
+    <h2>Temperatuur &amp; CPU</h2>
+    <dl>
+      {% for t in temps %}
+      <dt>{{ t.label }}</dt><dd class="{{ 'hot-text' if t.celsius >= 70 else '' }}">{{ t.celsius }} °C</dd>
+      {% endfor %}
+      {% if not temps %}<dt>Sensoren</dt><dd>niet beschikbaar</dd>{% endif %}
+      <dt>Frequentie nu</dt><dd>{{ cpu.min_mhz if cpu.min_mhz is not none else '?' }} – {{ cpu.max_mhz if cpu.max_mhz is not none else '?' }} MHz</dd>
+      <dt>Governor nu</dt><dd><code>{{ cpu.governor or 'onbekend' }}</code></dd>
+      <dt>Ingesteld profiel</dt><dd>{{ cfg.system.cpu_governor }}, {{ cfg.system.cpu_min_mhz or 'auto' }} – {{ cfg.system.cpu_max_mhz or 'max' }} MHz</dd>
+    </dl>
+    <p class="hint">Beschikbaar: {{ cpu.available_mhz|join(', ') or 'onbekend' }} MHz · <a href="{{ url_for('system') }}">Systeem → CPU-profiel</a></p>
+  </section>
+  <section class="card">
+    <h2>Firewall</h2>
+    <dl>
+      <dt>WAN → LAN</dt><dd><strong>dicht</strong> tenzij portforward</dd>
+      <dt>LAN → WAN</dt><dd>open (NAT/masquerade)</dd>
+      <dt>Portforwards</dt><dd>{{ cfg.firewall.forwards|length }}</dd>
+      <dt>UDP NAT-timeout</dt><dd>{{ cfg.firewall.udp_nat_timeout or 'kernel-default' }} s</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Verbindingschecks</h2>
+    <table>
+      <thead><tr><th>Status</th><th>Check</th><th>Bijzonderheden</th></tr></thead>
+      <tbody>
+      {% for check in connectivity %}
+        <tr>
+          <td class="{{ 'ok-text' if check.ok else 'hot-text' }}">{{ 'OK' if check.ok else 'FAIL' }}</td>
+          <td>{{ check.name }}</td>
+          <td class="muted">{{ check.detail }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="3" class="muted">Geen checks beschikbaar.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="hint">Deze checks worden bij elke pagina-refresh opnieuw uitgevoerd. <a href="{{ url_for('dashboard') }}">Opnieuw controleren</a>.</p>
+  </section>
+  <section class="card">
+    <h2>DHCP-server op LAN</h2>
+    <p>
+      {% if cfg.interfaces.dhcp_enabled %}
+        <strong class="ok-text">AAN</strong> — Dnsmasq geeft adressen uit op
+        de poort <code>{{ cfg.interfaces.lan_bridge }}</code>.
+      {% else %}
+        <strong class="hot-text">UIT</strong> — de router is zelf DHCP-klant.
+      {% endif %}
+    </p>
+    <p><a class="button" href="{{ url_for('dhcp_clients') }}">DHCP-klanten bekijken</a></p>
+  </section>
+</div>
+
+<h2>Netwerkadressen</h2>
+<table>
+  <thead><tr><th>Interface</th><th>Adres</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for iface in state.interfaces %}
+    <tr>
+      <td><code>{{ iface.ifname }}</code></td>
+      <td>{{ iface.addr_info|map(attribute='address')|join(', ') }}</td>
+      <td>{{ iface.operstate or iface.adminstate or '-' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="3" class="muted">Geen interface-informatie beschikbaar.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p><a class="button" href="{{ url_for('apply') }}">Wijzigingen bekijken</a></p>
+{% endblock %}

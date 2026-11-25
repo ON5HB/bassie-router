@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Systeem{% endblock %}
+{% block content %}
+<h1>Systeem</h1>
+
+<section class="card">
+  <h2>CPU-profiel (cpupower)</h2>
+  {% if cpu.nominal_mhz %}
+  <p>Nominale CPUsnelheid (zonder turbo): <strong>{{ cpu.nominal_mhz }} MHz</strong>.
+     Voorgesteld voor lage temperatuur: <code>powersave</code>,
+     <strong>{{ cpu.suggested_min_mhz }}–{{ cpu.suggested_max_mhz }} MHz</strong>
+     — 50% van nominaal als minimum, geen boost.</p>
+  <form method="post" action="{{ url_for('cpu_suggest') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p><button type="submit" class="button">Gebruik dit voorstel</button></p>
+  </form>
+  {% else %}
+  <p>Geen nominale CPUsnelheid gevonden in <code>/proc/cpuinfo</code>.</p>
+  {% endif %}
+  {% if cpu.available_mhz %}
+  <p class="hint">Instelbaar: {{ cpu.available_mhz|join(', ') }} MHz · nu
+     {{ cpu.min_mhz if cpu.min_mhz is not none else '?' }} –
+     {{ cpu.max_mhz if cpu.max_mhz is not none else '?' }} MHz ·
+     governor <code>{{ cpu.governor or 'onbekend' }}</code>
+     {% if not cpu.cpupower %}· <strong><code>cpupower</code> niet gevonden</strong>{% endif %}</p>
+  {% else %}
+  <p class="hint">Geen frequentie-informatie beschikbaar via sysfs.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('cpu_profile') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <datalist id="freqs">
+      {% for mhz in cpu.available_mhz %}<option value="{{ mhz }}">{% endfor %}
+    </datalist>
+    <div class="row">
+      <label>Governor
+        <select name="cpu_governor">
+          {% for g in governors %}<option value="{{ g }}" {{ 'selected' if g == cfg.system.cpu_governor }}>{{ g }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Minimum (MHz) <input name="cpu_min_mhz" list="freqs" inputmode="numeric" value="{{ cfg.system.cpu_min_mhz or '' }}" placeholder="leeg = kernel-default"></label>
+      <label>Maximum (MHz) <input name="cpu_max_mhz" list="freqs" inputmode="numeric" value="{{ cfg.system.cpu_max_mhz or '' }}" placeholder="leeg = maximum"></label>
+    </div>
+    <p><button type="submit" class="button">CPU nu toepassen</button></p>
+    <p class="hint">Deze knop is alléén voor de CPU: waarden worden meteen aangenomen. Overige instellingen worden actief met <strong>Toepassen nu</strong> bovenaan. Huidige temperatuur{% if temps %}: {{ temps|map(attribute='celsius')|max }} °C{% else %}: niet beschikbaar{% endif %} — wordt bij elke pagina-refresh opnieuw uitgelezen. Alle cores staan op <a href="{{ url_for('dashboard') }}">Status</a>.</p>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Backup</h2>
+  <p>Download de huidige configuratie (<code>{{ config_file }}</code>) als JSON.</p>
+  <p><a class="button" href="{{ url_for('download_config') }}">Configuratie downloaden</a></p>
+  <p class="hint">Bewaar het bestand veilig: het bevat ook PPPoE-wachtwoorden. Eerdere versies staan in <code>/var/backups/bassie-router/</code> en worden bij elke wijziging automatisch bewaard.</p>
+
+  <h3>Herstellen</h3>
+  <form method="post" action="{{ url_for('restore_config') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p>Configuratie uploaden</p>
+    <p class="upload">
+      <input id="config_file" class="file-input" type="file" name="config_file" accept=".json,application/json" required>
+      <label for="config_file" class="button">Bladeren</label>
+      <span id="config_file_name" class="hint"></span>
+    </p>
+    <p><label class="inline"><input type="checkbox" name="confirm" value="1" required> Ik weet het zeker (huidige instellingen worden overschreven)</label></p>
+    <button type="submit" class="button">Herstellen</button>
+  </form>
+  <p class="hint">Na herstellen zijn de instellingen nog niet actief: klik op <strong>Wijzigingen Opslaan</strong>. Met <strong>Negeren</strong> ga je terug naar de laatst toegepaste configuratie.</p>
+  <script>
+    (function () {
+      var input = document.getElementById('config_file');
+      var name = document.getElementById('config_file_name');
+      input.addEventListener('change', function () {
+        name.textContent = input.files.length ? input.files[0].name : '';
+      });
+    })();
+  </script>
+</section>
+
+<section class="card">
+  <h2>Opnieuw opstarten</h2>
+  <p>Start de router opnieuw op. De verbinding wordt even verbroken.</p>
+  <form method="post" action="{{ url_for('reboot_system') }}" id="reboot-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p><label class="inline"><input type="checkbox" name="confirm" value="1" required> Ik weet het zeker</label></p>
+    <button type="button" class="button" id="reboot-open">Reboot</button>
+  </form>
+</section>
+
+<dialog id="reboot-dialog" class="confirm-dialog">
+  <h3>Weet je zeker dat de router moet rebooten?</h3>
+  <p>De verbinding wordt even verbroken. Pas daarna is de router weer bereikbaar.</p>
+  <div class="actions">
+    <button type="button" class="button" id="reboot-cancel">Nee</button>
+    <button type="submit" form="reboot-form" class="button danger">Ja</button>
+  </div>
+</dialog>
+<script>
+  function bassieConfirm(formId, openId, dialogId, cancelId) {
+    var form = document.getElementById(formId);
+    var dialog = document.getElementById(dialogId);
+    document.getElementById(openId).addEventListener('click', function () {
+      if (!form.reportValidity()) { return; }
+      if (typeof dialog.showModal === 'function') { dialog.showModal(); }
+      else { dialog.setAttribute('open', ''); }
+    });
+    document.getElementById(cancelId).addEventListener('click', function () {
+      if (typeof dialog.close === 'function') { dialog.close(); }
+      else { dialog.removeAttribute('open'); }
+    });
+  }
+  bassieConfirm('reboot-form', 'reboot-open', 'reboot-dialog', 'reboot-cancel');
+</script>
+
+<section class="card">
+  <h2>Afsluiten</h2>
+  <p>Schakelt de router uit; hij is pas weer bereikbaar als je hem fysiek opnieuw start.</p>
+  <form method="post" action="{{ url_for('shutdown_system') }}" id="shutdown-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p><label class="inline"><input type="checkbox" name="confirm" value="1" required> Ik weet het zeker</label></p>
+    <button type="button" class="button" id="shutdown-open">Shutdown</button>
+  </form>
+</section>
+
+<dialog id="shutdown-dialog" class="confirm-dialog">
+  <h3>Weet je zeker dat de router moet afsluiten?</h3>
+  <p>De router is daarna pas weer bereikbaar als je hem fysiek opnieuw start.</p>
+  <div class="actions">
+    <button type="button" class="button" id="shutdown-cancel">Nee</button>
+    <button type="submit" form="shutdown-form" class="button danger">Ja</button>
+  </div>
+</dialog>
+<script>bassieConfirm('shutdown-form', 'shutdown-open', 'shutdown-dialog', 'shutdown-cancel');</script>
+
+<section class="card">
+  <h2>Sessie</h2>
+  <p>Aangemeld als <code>{{ session.get('user') }}</code>. De sessie is {{ session_minutes }} minuten geldig.</p>
+  <form method="post" action="{{ url_for('logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="button">Uitloggen</button>
+  </form>
+</section>
+{% endblock %}

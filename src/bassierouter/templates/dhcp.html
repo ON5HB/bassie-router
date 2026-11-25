@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}DHCP{% endblock %}
+{% block content %}
+<h1>DHCP-klanten</h1>
+
+<p>
+  DHCP-server op LAN:
+  {% if cfg.interfaces.dhcp_enabled %}<strong class="ok-text">AAN</strong>{% else %}<strong class="hot-text">UIT</strong>{% endif %}
+  · <code>{{ cfg.interfaces.lan_bridge }}</code> ·
+  DNS-domein <code>{{ cfg.interfaces.dns_domain }}</code> ·
+  <a href="{{ url_for('network') }}">instellingen</a>
+</p>
+<p class="hint">Wil je namen als <code>printer.local</code>? Zet het DNS-domein op
+  <code>local</code> bij <a href="{{ url_for('network') }}">Netwerk</a>. De router
+  gebruikt de korte naam en stuurt lokale namen niet naar WAN.</p>
+
+{% if not cfg.interfaces.dhcp_enabled %}
+<div class="flash warning">
+  <strong>De DHCP-server staat uit.</strong> De router haalt zelf een adres bij een
+  andere DHCP-server. Vaste adressen hieronder worden pas gebruikt als je de
+  DHCP-server op <a href="{{ url_for('network') }}">Netwerk</a> aanzet.
+</div>
+{% endif %}
+
+<section class="card">
+  <h2>Huidige DHCP-uitgaven</h2>
+  <table>
+    <thead><tr><th>MAC-adres</th><th>IP-adres</th><th>Naam</th><th>Gezien</th><th></th></tr></thead>
+    <tbody>
+    {% for lease in leases %}
+      <tr>
+        <td><code>{{ lease.mac }}</code></td>
+        <td><code>{{ lease.ip }}</code></td>
+        <td>{{ lease.name or '-' }}</td>
+        <td class="muted">{{ lease.since or '-' }}</td>
+        <td>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="mac" value="{{ lease.mac }}">
+            <input name="ip" value="{{ lease.ip }}" aria-label="IP-adres">
+            <input name="name" value="{{ lease.pin_name }}" aria-label="Naam">
+            <button type="submit">Vastzetten</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nog geen klanten bekend.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="hint">Deze lijst komt uit het leasebestand van dnsmasq. Vastzetten geeft dit apparaat voortaan altijd dit IP, met een lease die niet verloopt.</p>
+</section>
+
+<section class="card">
+  <h2>Vaste adressen</h2>
+  <table>
+    <thead><tr><th>MAC-adres</th><th>IP-adres</th><th>Naam</th><th>Lease</th><th></th></tr></thead>
+    <tbody>
+    {% for reservation in cfg.interfaces.dhcp_reservations %}
+      <tr>
+        <td><code>{{ reservation.mac }}</code></td>
+        <td><code>{{ reservation.ip }}</code></td>
+        <td>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="rename">
+            <input type="hidden" name="index" value="{{ loop.index0 }}">
+            <input name="name" value="{{ reservation.name }}" placeholder="printer.local" aria-label="DNS-naam">
+            <button type="submit">Naam opslaan</button>
+          </form>
+        </td>
+        <td>onbepaalde duur</td>
+        <td>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="remove">
+            <input type="hidden" name="index" value="{{ loop.index0 }}">
+            <button type="submit" class="danger">Verwijderen</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nog geen vaste adressen.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Vast adres toevoegen</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="add">
+    <label>MAC-adres <input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required></label>
+    <label>IP-adres <input name="ip" placeholder="192.168.88.50" required></label>
+    <label>Naam (optioneel) <input name="name" placeholder="printer"></label>
+    <div class="actions"><button type="submit" class="primary">Vastzetten</button></div>
+  </form>
+  <p class="hint">Het IP moet in het LAN-netwerk liggen en mag niet het routeradres zijn.</p>
+</section>
+{% endblock %}
