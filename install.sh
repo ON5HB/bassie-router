@@ -19,6 +19,7 @@ echo "== Pakketten installeren =="
 # pppoe-pakket wordt niet gebruikt.
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    git \
     nftables \
     ppp \
     dnsmasq \
@@ -26,7 +27,6 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     isc-dhcp-client \
     iputils-ping \
     curl \
-    git \
     python3 \
     python3-flask
 

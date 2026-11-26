@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.53
+Versie: 0.1.54
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -65,8 +65,9 @@ git clone <deze-repo> /opt/bassie-router-src
 bash /opt/bassie-router-src/install.sh
 ```
 
-Het script installeert `nftables ppp dnsmasq iproute2 isc-dhcp-client
-curl git python3 python3-flask linux-tools-common` (voor `cpupower`) en, als
+Het script installeert als eerste `git`, daarna `nftables ppp dnsmasq
+iproute2 isc-dhcp-client curl python3 python3-flask linux-tools-common`
+(voor `cpupower`) en, als
 `python3-pam` ontbreekt, `pamtester`. `git` is nodig voor latere updates.
 De code gaat naar `/opt/bassie-router`,
 maakt

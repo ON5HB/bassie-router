@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.54 — 2026-11-26
+
+- git als eerste pakket in install.sh, zodat updates via git pull altijd mogelijk zijn
+
 ## 0.1.53 — 2026-11-26
 
 - LCP-keepalive: bij één gemiste echo van 30 seconden direct verbreken en opnieuw verbinden
