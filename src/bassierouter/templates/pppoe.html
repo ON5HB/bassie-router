@@ -7,7 +7,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="next" value="pppoe">
   <section class="card">
-    <h2>WAN &amp; VLAN</h2>
+    <h2>WAN-poort</h2>
     <div class="row">
       <label>WAN-interface
         <select name="wan" id="wan_select" required>
@@ -23,7 +23,7 @@
         </select>
       </label>
     </div>
-    <p class="hint">De WAN-poort gaat naar een modem in bridge-mode of een Fiber ONT. Het VLAN-id staat bij stap 2 (PPPoE); het LAN heeft geen VLAN.</p>
+    <p class="hint">Kies de poort die je voor WAN-verkeer wil gebruiken.</p>
   </section>
 
   <section class="card">
@@ -36,7 +36,10 @@
         </select>
       </label>
     </div>
-    <p class="hint">De WAN-NIC kiest zelf een adres: DHCP bij een modem/ONT, of een statisch IP dat je hieronder invult. Welke van de twee nodig is, hangt af van de instelling van de DSL-modem. Daarna kun je in stap 2 eventueel PPPoE eroverheen zetten.</p>
+    <p class="hint">Je kan hier kiezen om DHCP voor de WAN-poort te gebruiken, danwel zelf de statische gegevens in te vullen.</p>
+    {% if nic_mode == 'dhcp' %}
+    <p class="hint">DHCP gaf: <code>{{ wan_info.address or 'nog geen adres' }}</code>, gateway <code>{{ wan_info.gateway or '-' }}</code>, DNS <code>{{ wan_info.dns or '-' }}</code>.</p>
+    {% endif %}
     <div class="row">
       <label>WAN-IP <input name="wan_static_ip" value="{{ cfg.interfaces.wan_static_ip }}" placeholder="bijv. 10.0.0.2 of 192.168.1.2"></label>
       <label>Prefix <input name="wan_static_prefix" type="number" min="1" max="32" value="{{ cfg.interfaces.wan_static_prefix }}"></label>
@@ -48,10 +51,10 @@
 
   <section class="card">
     <h2>Stap 2: PPPoE (optioneel)</h2>
-    <p><label class="inline"><input type="checkbox" name="client_enabled" id="client_enabled" {{ 'checked' if cfg.pppoe_client.enabled }}> PPPoE inschakelen — <code>ppp0</code> wordt de WAN-interface</label></p>
+    <p><label class="inline"><input type="checkbox" name="client_enabled" id="client_enabled" {{ 'checked' if cfg.pppoe_client.enabled }}> PPPoE inschakelen als je provider dat nodig heeft</label></p>
     <div class="row">
       <label>Provider VLAN-id <input name="wan_vlan_id" type="number" min="0" max="4094" id="wan_vlan_id" value="{{ cfg.interfaces.wan_vlan_id or '' }}" placeholder="leeg of 0 = untagged"></label>
-      <label>PPPoE-interface (optioneel)
+      <label>PPPoE-interface, niet veranderen tenzij automatisch niet werkt
         <select name="client_interface">
           <option value="" {{ 'selected' if not cfg.pppoe_client.interface }}>automatisch ({{ cfg.active_wan_iface }})</option>
           {% for iface in interfaces %}
@@ -66,18 +69,19 @@
         </select>
       </label>
     </div>
-    <p class="hint">Staat dit uit, dan routeert de router rechtstreeks via de WAN-NIC (DHCP of statisch). Staat dit aan, dan krijgt de NIC eerst zijn adres van stap 1 en pas daarna bouwt PPPoE <code>ppp0</code> op. De modem moet in <strong>bridge-mode</strong> staan, of het is een Fiber ONT dat de PPPoE-gegevens doorgeeft. Met een VLAN-id gebruikt PPPoE <code>{{ cfg.interfaces.wan }}.&lt;vlan-id&gt;</code>; leeg of <code>0</code> betekent geen VLAN en ruimt een oude subinterface op. De modem hoeft de tag niet te kennen en het LAN blijft untagged. Zet je PPPoE uit, dan blijft het VLAN-id hier ingevuld staan, maar is het niet actief en ruimt de router een oude subinterface op.</p>
+    <p class="hint">Provider VLAN-id geven of leeg laten als je provider geen VLAN gebruikt.</p>
     <div class="row">
       <label>Gebruikersnaam <input name="client_username" id="client_username" value="{{ cfg.pppoe_client.username }}"></label>
-      <label>Wachtwoord <input name="client_password" type="password" value="{{ cfg.pppoe_client.password }}"></label>
+      <label>Paswoord <input name="client_password" type="password" value="{{ cfg.pppoe_client.password }}"></label>
     </div>
+    <p class="hint">Gebruikersnaam: de inlognaam die je van de provider kreeg, bijv. <code>bassie@FASTIC</code> (pas op: hoofdlettergevoelig!).</p>
     <div class="row">
-      <label>Service-naam <input name="client_service" value="{{ cfg.pppoe_client.service_name }}"></label>
-      <label>MTU <input name="client_mtu" type="number" value="{{ cfg.pppoe_client.mtu }}"></label>
+      <label>Service-naam (leeg laten indien niet gekregen) <input name="client_service" value="{{ cfg.pppoe_client.service_name }}"></label>
+      <label>MTU (1492 is normaal voor DSL/PPPoE, niet aanpassen indien niet nodig) <input name="client_mtu" type="number" value="{{ cfg.pppoe_client.mtu }}"></label>
     </div>
     <p>
       <label class="inline"><input type="checkbox" name="client_peerdns" {{ 'checked' if cfg.pppoe_client.usepeerdns }}> DNS van provider overnemen</label>
-      <label class="inline"><input type="checkbox" name="client_demand" {{ 'checked' if cfg.pppoe_client.demand }}> Op aanvraag (demand)</label>
+      <label class="inline"><input type="checkbox" name="client_demand" {{ 'checked' if cfg.pppoe_client.demand }}> Op aanvraag (verbinding wordt verbroken na <input name="client_idle_seconds" type="number" min="1" max="86400" value="{{ cfg.pppoe_client.idle_seconds }}"> seconden geen verkeer)</label>
     </p>
   </section>
 

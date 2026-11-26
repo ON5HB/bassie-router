@@ -130,6 +130,8 @@ class PPPoEClient:
     usepeerdns: bool = True
     mtu: int = 1492
     demand: bool = False
+    idle_seconds: int = 300
+    """Op aanvraag: verbreken na zoveel seconden zonder verkeer (5 minuten)."""
 
     def iface(self, cfg: "Config") -> str:
         return self.interface or cfg.active_wan_iface
@@ -489,6 +491,8 @@ def validate(cfg: Config) -> list[str]:
             errors.append("PPPoE-client: ongeldige interface")
         if not 576 <= c.mtu <= 1500:
             errors.append("PPPoE-client: MTU moet tussen 576 en 1500 liggen")
+        if not 1 <= c.idle_seconds <= 86400:
+            errors.append("PPPoE-client: idle-tijd moet tussen 1 en 86400 seconden liggen")
 
     fw = cfg.firewall
     if fw.wan_input_policy not in ("drop", "accept"):

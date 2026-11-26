@@ -302,6 +302,14 @@ def test_pppoe_options_use_nic_prefix_for_vlan_interface():
     assert "lcp-echo-failure 1" in text
 
 
+def test_pppoe_options_include_idle_timeout_for_demand():
+    cfg = Config()
+    cfg.pppoe_client.demand = True
+    text = render_client_options(cfg)
+    assert "demand" in text
+    assert "idle 300" in text
+
+
 def test_pppoe_check_pings_modem_before_starting_pppd():
     cfg = Config()
     cfg.interfaces.wan_static_gateway = "192.168.1.1"

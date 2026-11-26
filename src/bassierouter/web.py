@@ -109,6 +109,43 @@ def _bridge_ipv4(bridge: str) -> str | None:
     return next(iter(addresses), None)
 
 
+def _wan_dhcp_info(cfg: Config) -> dict[str, str]:
+    """Actuele WAN-gegevens van de NIC, alleen ter informatie in de GUI."""
+
+    def output(command: list[str]) -> str:
+        try:
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=5, check=False
+            )
+        except (OSError, subprocess.SubprocessError):
+            return ""
+        return result.stdout.strip()
+
+    iface = cfg.active_wan_iface
+    address = ""
+    for field in output([
+        "/usr/sbin/ip", "-4", "-o", "addr", "show", "dev", iface, "scope", "global"
+    ]).split():
+        if field[0].isdigit() and "/" in field:
+            address = field
+            break
+
+    words = output(["/usr/sbin/ip", "-4", "route", "show", "default", "dev", iface]).split()
+    gateway = words[words.index("via") + 1] if "via" in words else ""
+
+    dns = ""
+    try:
+        for line in Path("/etc/resolv.conf").read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == "nameserver" and not parts[1].startswith("127."):
+                dns = parts[1]
+                break
+    except OSError:
+        pass
+
+    return {"address": address, "gateway": gateway, "dns": dns}
+
+
 def resolve_bind(cfg: Config) -> str:
     """Kies een lokaal IPv4-adres voor de GUI; nooit 0.0.0.0.
 
@@ -661,6 +698,7 @@ def create_app(
                 c.usepeerdns = _bool(request.form, "client_peerdns")
                 c.mtu = _int(request.form, "client_mtu", 1492)
                 c.demand = _bool(request.form, "client_demand")
+                c.idle_seconds = _int(request.form, "client_idle_seconds", 300)
 
             except (KeyError, ValueError) as exc:
                 flash(f"Ongeldige invoer: {exc}", "error")
@@ -668,7 +706,9 @@ def create_app(
                 result = save_and_apply(cfg, "pppoe")
                 if result:
                     return result
-        return render_template("pppoe.html", cfg=cfg)
+        return render_template(
+            "pppoe.html", cfg=cfg, wan_info=_wan_dhcp_info(cfg)
+        )
 
     @app.route("/firewall", methods=["GET", "POST"])
     def firewall() -> str:

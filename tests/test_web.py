@@ -77,8 +77,8 @@ def test_dashboard_and_pages_load(tmp_path):
     for path in ("/network", "/pppoe"):
         page = client.get(path).data
         assert b"Zyxel" not in page, path
-        assert b"bridge-mode" in page, path
         assert b"ONT" in page, path
+    assert b"bridge-mode" in client.get("/network").data
     network_page = client.get("/network").data
     assert b'name="wan"' not in network_page
     assert b'name="wan_nic_mode"' not in network_page
@@ -476,6 +476,23 @@ def test_firewall_form_can_disable_dns_enforcement(tmp_path):
     assert "DNS alleen via router" not in render_nft(cfg)
 
 
+def test_provider_page_shows_current_dhcp_info(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "bassierouter.web._wan_dhcp_info",
+        lambda cfg: {
+            "address": "192.168.1.2/24",
+            "gateway": "192.168.1.1",
+            "dns": "1.1.1.1",
+        },
+    )
+    client, _ = make_client(tmp_path)
+    page = client.get("/pppoe").data
+    assert b"DHCP gaf:" in page
+    assert b"192.168.1.2/24" in page
+    assert b"192.168.1.1" in page
+    assert b"1.1.1.1" in page
+
+
 def test_gui_pppoe_form_sets_provider_vlan(tmp_path):
     client, cfg_file = make_client(tmp_path)
     response = client.post("/pppoe", data={
@@ -492,6 +509,24 @@ def test_gui_pppoe_form_sets_provider_vlan(tmp_path):
     assert cfg.interfaces.wan_vlan_id == 6
     assert cfg.interfaces.wan_iface == "eth0.6"
     assert cfg.pppoe_client.username == "provider-user"
+
+
+def test_gui_pppoe_form_sets_idle_timeout(tmp_path):
+    client, cfg_file = make_client(tmp_path)
+    response = client.post("/pppoe", data={
+        "csrf_token": "testtoken",
+        "client_enabled": "on",
+        "client_username": "provider-user",
+        "client_password": "secret",
+        "client_mtu": "1492",
+        "client_peerdns": "on",
+        "client_demand": "on",
+        "client_idle_seconds": "120",
+    })
+    assert response.status_code == 302
+    cfg = load_config(cfg_file)
+    assert cfg.pppoe_client.demand is True
+    assert cfg.pppoe_client.idle_seconds == 120
 
 
 def test_gui_pppoe_off_keeps_vlan_value_but_not_active(tmp_path):

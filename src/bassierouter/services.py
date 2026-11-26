@@ -382,6 +382,7 @@ def render_client_options(cfg: Config) -> str:
         lines.append("usepeerdns")
     if c.demand:
         lines.append("demand")
+        lines.append(f"idle {c.idle_seconds}")
     lines.append("")
     return "\n".join(lines)
 
