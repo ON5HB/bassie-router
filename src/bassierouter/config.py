@@ -132,7 +132,7 @@ class PPPoEClient:
     demand: bool = False
 
     def iface(self, cfg: "Config") -> str:
-        return self.interface or cfg.interfaces.wan_iface
+        return self.interface or cfg.active_wan_iface
 
 
 @dataclass
@@ -203,6 +203,23 @@ class Config:
             self.interfaces.wan_mode = (
                 "static" if self.interfaces.wan_static_ip else "dhcp"
             )
+
+    @property
+    def active_vlan_id(self) -> int | None:
+        """Het VLAN-id wordt alleen toegepast zolang PPPoE aan staat.
+
+        De ingestelde waarde blijft in de config staan, zodat hij in de GUI
+        zichtbaar blijft en terugkomt als PPPoE weer wordt ingeschakeld.
+        """
+        if not self.pppoe_client.enabled:
+            return None
+        return self.interfaces.wan_vlan_id
+
+    @property
+    def active_wan_iface(self) -> str:
+        """WAN-interface die werkelijk gebruikt wordt (fysiek of VLAN-subinterface)."""
+        vid = self.active_vlan_id
+        return self.interfaces.wan if not vid else f"{self.interfaces.wan}.{vid}"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Config":

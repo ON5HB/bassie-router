@@ -494,6 +494,29 @@ def test_gui_pppoe_form_sets_provider_vlan(tmp_path):
     assert cfg.pppoe_client.username == "provider-user"
 
 
+def test_gui_pppoe_off_keeps_vlan_value_but_not_active(tmp_path):
+    client, cfg_file = make_client(tmp_path)
+    cfg = load_config(cfg_file)
+    cfg.interfaces.wan = "enp1s0"
+    cfg.interfaces.wan_vlan_id = 10
+    save_config(cfg, cfg_file)
+
+    response = client.post("/pppoe", data={
+        "csrf_token": "testtoken",
+        "wan": "enp1s0",
+        "wan_vlan_id": "10",
+        "wan_nic_mode": "dhcp",
+    })
+    assert response.status_code == 302
+    cfg = load_config(cfg_file)
+    assert cfg.pppoe_client.enabled is False
+    assert cfg.interfaces.wan_vlan_id == 10
+    assert cfg.active_vlan_id is None
+    assert cfg.active_wan_iface == "enp1s0"
+    assert "type vlan" not in render_links_script(cfg)
+    assert 'VLAN_ID=""' in render_links_script(cfg)
+
+
 def test_gui_vlan_zero_clears_old_vlan(tmp_path):
     client, cfg_file = make_client(tmp_path)
     cfg = load_config(cfg_file)

@@ -30,11 +30,11 @@ def test_nft_is_ipv4_only_and_wan_closed():
     assert "table ip6" not in rules
     assert "policy drop;" in rules
     assert "oifname $WAN masquerade" in rules
-    assert 'oifname "ppp+" masquerade comment "NAT naar WAN/PPPoE"' in rules
+    assert 'oifname "ppp*" masquerade comment "NAT naar WAN/PPPoE"' in rules
     assert "tcp option maxseg size set rt mtu" in rules
-    assert 'oifname "ppp+" tcp flags syn tcp option maxseg size set rt mtu' in rules
+    assert 'oifname "ppp*" tcp flags syn tcp option maxseg size set rt mtu' in rules
     assert "iifname $LAN oifname $WAN accept" in rules
-    assert 'iifname $LAN oifname "ppp+" accept' in rules
+    assert 'iifname $LAN oifname "ppp*" accept' in rules
     assert 'iifname $LAN oifname $WAN udp dport 53 drop comment "DNS alleen via router"' in rules
     assert 'iifname $LAN oifname $WAN tcp dport 53 drop comment "DNS alleen via router"' in rules
 
@@ -58,7 +58,7 @@ def test_nft_portforward_tcp_and_udp():
     rules = render_nft(cfg)
     assert 'tcp dport 8080 dnat to 192.168.88.10:80' in rules
     assert 'udp dport 53 dnat to 192.168.88.20:53' in rules
-    # Twee regels per forward: fysieke WAN + PPPoE (ppp+).
+    # Twee regels per forward: fysieke WAN + PPPoE (ppp*).
     assert rules.count('comment "web"') == 4
 
 
@@ -129,6 +129,7 @@ def test_dnsmasq_ipv4_dhcp_when_enabled():
 def test_links_script_handles_wan_vlan_and_multiple_lan_ports():
     cfg = Config()
     cfg.interfaces.wan_vlan_id = 6
+    cfg.pppoe_client.enabled = True
     cfg.interfaces.lan_ports = ["eth1", "eth2", "eth3"]
     text = render_links_script(cfg)
     assert 'link add link "$WAN" name "eth0.6" type vlan id 6' in text
@@ -292,6 +293,7 @@ def test_pppoe_options_use_nic_prefix_for_vlan_interface():
     cfg = Config()
     cfg.interfaces.wan = "enp1s0"
     cfg.interfaces.wan_vlan_id = 10
+    cfg.pppoe_client.enabled = True
     text = render_client_options(cfg)
     assert "plugin rp-pppoe.so" in text
     assert "nic-enp1s0.10" in text

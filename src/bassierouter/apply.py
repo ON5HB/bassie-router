@@ -541,7 +541,7 @@ def status(
         res = runner.run(["systemctl", "is-active", unit])
         services_state[unit] = res.stdout.strip() or "inactive"
     return {
-        "wan": cfg.interfaces.wan_iface,
+        "wan": cfg.active_wan_iface,
         "lan": cfg.interfaces.lan_iface,
         "lan_ip": cfg.interfaces.lan_ip,
         "interfaces": interfaces,

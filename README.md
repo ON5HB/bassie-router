@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.55
+Versie: 0.1.56
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -292,13 +292,17 @@ Via de tab **Provider → Stap 2: PPPoE → Provider VLAN-id**:
 - Geeft de provider geen VLAN, of haalt de modem/ONT de tag eraf → veld leeg
   laten (of `0`; dat betekent hetzelfde). De router ruimt dan ook een oude
   subinterface zoals `enp1s0.10` op.
+- Zet je PPPoE uit, dan blijft het ingestelde VLAN-id in de GUI staan, maar het
+  wordt niet toegepast: de WAN-NIC gebruikt dan rechtstreeks DHCP of het statische
+  adres en een oude VLAN-subinterface wordt opgeruimd. Zet je PPPoE weer aan,
+  dan komt het VLAN-id vanzelf terug.
 - Het VLAN geldt **alleen voor WAN**. De tag wordt op de WAN-subinterface
   getermineerd; de bridge `switch` staat expliciet met `vlan_filtering 0`, dus
   er komt geen 802.1Q-tag op LAN terecht. Het LAN is IPv4-only.
 - nftables schrijft WAN-regels twee keer uit: één voor de fysieke NIC en één
-  losse met `oifname "ppp+"`. Een wildcard inside een ifname-set matcht `ppp0`
-  namelijk niet, waardoor NAT en forward voor PPPoE wegvielen terwijl de router
-  zelf wél internet had.
+  losse met `oifname "ppp*"`. nftables gebruikt `*` als wildcard; `ppp+` is
+  iptables-syntax en matcht nooit `ppp0`. Daardoor vielen NAT en forward voor
+  PPPoE weg, terwijl de router zelf wél internet had.
 
 ## DHCP-klanten
 

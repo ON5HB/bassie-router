@@ -18,8 +18,15 @@ def test_wan_vlan_derived_name():
     cfg = Config()
     cfg.interfaces.wan_vlan_id = 6
     assert cfg.interfaces.wan_iface == "eth0.6"
-    assert cfg.pppoe_client.iface(cfg) == "eth0.6"
     assert cfg.interfaces.lan_iface == "switch"
+    # Zonder PPPoE blijft het id bewaard, maar is het niet actief.
+    assert cfg.active_wan_iface == "eth0"
+    assert cfg.active_vlan_id is None
+    assert cfg.pppoe_client.iface(cfg) == "eth0"
+    cfg.pppoe_client.enabled = True
+    assert cfg.active_wan_iface == "eth0.6"
+    assert cfg.active_vlan_id == 6
+    assert cfg.pppoe_client.iface(cfg) == "eth0.6"
 
 
 def test_vlan_zero_means_no_vlan_also_from_old_configs():

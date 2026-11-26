@@ -50,23 +50,23 @@
     <h2>Stap 2: PPPoE (optioneel)</h2>
     <p><label class="inline"><input type="checkbox" name="client_enabled" id="client_enabled" {{ 'checked' if cfg.pppoe_client.enabled }}> PPPoE inschakelen — <code>ppp0</code> wordt de WAN-interface</label></p>
     <div class="row">
-      <label>Provider VLAN-id <input name="wan_vlan_id" type="number" min="0" max="4094" value="{{ cfg.interfaces.wan_vlan_id or '' }}" placeholder="leeg of 0 = untagged"></label>
+      <label>Provider VLAN-id <input name="wan_vlan_id" type="number" min="0" max="4094" id="wan_vlan_id" value="{{ cfg.interfaces.wan_vlan_id or '' }}" placeholder="leeg of 0 = untagged"></label>
       <label>PPPoE-interface (optioneel)
         <select name="client_interface">
-          <option value="" {{ 'selected' if not cfg.pppoe_client.interface }}>automatisch ({{ cfg.interfaces.wan_iface }})</option>
+          <option value="" {{ 'selected' if not cfg.pppoe_client.interface }}>automatisch ({{ cfg.active_wan_iface }})</option>
           {% for iface in interfaces %}
             <option value="{{ iface }}" {{ 'selected' if iface == cfg.pppoe_client.interface }}>{{ iface }}</option>
           {% endfor %}
-          {% if cfg.interfaces.wan_vlan_id and cfg.interfaces.wan_iface not in interfaces %}
-            <option value="{{ cfg.interfaces.wan_iface }}" {{ 'selected' if cfg.pppoe_client.interface == cfg.interfaces.wan_iface }}>{{ cfg.interfaces.wan_iface }}</option>
+          {% if cfg.active_vlan_id and cfg.active_wan_iface not in interfaces %}
+            <option value="{{ cfg.active_wan_iface }}" {{ 'selected' if cfg.pppoe_client.interface == cfg.active_wan_iface }}>{{ cfg.active_wan_iface }}</option>
           {% endif %}
-          {% if cfg.pppoe_client.interface and cfg.pppoe_client.interface not in interfaces and cfg.pppoe_client.interface != cfg.interfaces.wan_iface %}
+          {% if cfg.pppoe_client.interface and cfg.pppoe_client.interface not in interfaces and cfg.pppoe_client.interface != cfg.active_wan_iface %}
             <option value="{{ cfg.pppoe_client.interface }}" selected>{{ cfg.pppoe_client.interface }} (niet aanwezig)</option>
           {% endif %}
         </select>
       </label>
     </div>
-    <p class="hint">Staat dit uit, dan routeert de router rechtstreeks via de WAN-NIC (DHCP of statisch). Staat dit aan, dan krijgt de NIC eerst zijn adres van stap 1 en pas daarna bouwt PPPoE <code>ppp0</code> op. De modem moet in <strong>bridge-mode</strong> staan, of het is een Fiber ONT dat de PPPoE-gegevens doorgeeft. Met een VLAN-id gebruikt PPPoE <code>{{ cfg.interfaces.wan }}.&lt;vlan-id&gt;</code>; leeg of <code>0</code> betekent geen VLAN en ruimt een oude subinterface op. De modem hoeft de tag niet te kennen en het LAN blijft untagged.</p>
+    <p class="hint">Staat dit uit, dan routeert de router rechtstreeks via de WAN-NIC (DHCP of statisch). Staat dit aan, dan krijgt de NIC eerst zijn adres van stap 1 en pas daarna bouwt PPPoE <code>ppp0</code> op. De modem moet in <strong>bridge-mode</strong> staan, of het is een Fiber ONT dat de PPPoE-gegevens doorgeeft. Met een VLAN-id gebruikt PPPoE <code>{{ cfg.interfaces.wan }}.&lt;vlan-id&gt;</code>; leeg of <code>0</code> betekent geen VLAN en ruimt een oude subinterface op. De modem hoeft de tag niet te kennen en het LAN blijft untagged. Zet je PPPoE uit, dan blijft het VLAN-id hier ingevuld staan, maar is het niet actief en ruimt de router een oude subinterface op.</p>
     <div class="row">
       <label>Gebruikersnaam <input name="client_username" id="client_username" value="{{ cfg.pppoe_client.username }}"></label>
       <label>Wachtwoord <input name="client_password" type="password" value="{{ cfg.pppoe_client.password }}"></label>

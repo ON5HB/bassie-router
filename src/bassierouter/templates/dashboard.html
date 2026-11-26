@@ -43,7 +43,7 @@
     <h2>Interfaces</h2>
     <dl>
       <dt>WAN (provider)</dt><dd><code>{{ state.wan }}</code></dd>
-      <dt>WAN-adres</dt><dd>{% if cfg.interfaces.wan_mode == 'pppoe' %}via PPPoE (<code>ppp0</code>){% elif cfg.interfaces.wan_mode == 'dhcp' %}DHCP-client op <code>{{ cfg.interfaces.wan_iface }}</code>{% else %}<code>{{ cfg.interfaces.wan_static_ip }}/{{ cfg.interfaces.wan_static_prefix }}</code>, gateway <code>{{ cfg.interfaces.wan_static_gateway }}</code>{% endif %}</dd>
+      <dt>WAN-adres</dt><dd>{% if cfg.interfaces.wan_mode == 'pppoe' %}via PPPoE (<code>ppp0</code>){% elif cfg.interfaces.wan_mode == 'dhcp' %}DHCP-client op <code>{{ cfg.active_wan_iface }}</code>{% else %}<code>{{ cfg.interfaces.wan_static_ip }}/{{ cfg.interfaces.wan_static_prefix }}</code>, gateway <code>{{ cfg.interfaces.wan_static_gateway }}</code>{% endif %}</dd>
       <dt>LAN-bridge</dt><dd><code>{{ state.lan }}</code></dd>
       {% if cfg.interfaces.dhcp_enabled %}
       <dt>LAN-IP</dt><dd><code>{{ lan_ip_display }}</code>/{{ cfg.interfaces.lan_prefix }} ({{ lan_ip_note }})</dd>
@@ -52,7 +52,7 @@
       {% endif %}
       <dt>GUI luistert op</dt><dd><code>{{ cfg.gui.bind }}:{{ cfg.gui.port }}</code></dd>
       <dt>LAN-poorten</dt><dd>{{ cfg.interfaces.lan_ports|join(', ') }}</dd>
-      <dt>WAN-VLAN</dt><dd>{% if cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }}{% else %}geen (untagged){% endif %}</dd>
+      <dt>WAN-VLAN</dt><dd>{% if cfg.active_vlan_id %}802.1Q tag {{ cfg.active_vlan_id }}{% elif cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }} (niet actief: PPPoE uit){% else %}geen (untagged){% endif %}</dd>
     </dl>
   </section>
   <section class="card">
@@ -60,7 +60,7 @@
     <dl>
       <dt>PPPoE-client</dt><dd>{{ 'aan' if cfg.pppoe_client.enabled else 'uit' }}</dd>
       <dt>Account</dt><dd><code>{{ cfg.pppoe_client.username or '-' }}</code></dd>
-      <dt>Provider VLAN</dt><dd>{% if cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }}{% else %}geen (untagged){% endif %}</dd>
+      <dt>Provider VLAN</dt><dd>{% if cfg.active_vlan_id %}802.1Q tag {{ cfg.active_vlan_id }}{% elif cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }} (niet actief: PPPoE uit){% else %}geen (untagged){% endif %}</dd>
       <dt>Actieve ppp-links</dt><dd>{{ state.ppp_interfaces|join(', ') or 'geen' }}</dd>
     </dl>
   </section>

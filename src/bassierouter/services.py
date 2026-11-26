@@ -136,13 +136,17 @@ def render_dnsmasq(cfg: Config) -> str:
 
 def render_links_script(cfg: Config) -> str:
     i = cfg.interfaces
+    # Ingesteld VLAN-id blijft bewaard, maar wordt alleen toegepast als
+    # PPPoE aan staat. Anders moet een oude subinterface juist verdwijnen.
+    active_vlan = cfg.active_vlan_id
+    active_wan = cfg.active_wan_iface
     ports = " ".join(shlex.quote(p) for p in i.lan_ports)
     bootstrap = "0" if cfg.bootstrapped else "1"
     vlan_block = ""
     vlan_cleanup = ""
     if i.wan:
         vlan_cleanup = """
-# Oude WAN-VLAN-subinterfaces opruimen (bijv. enp1s0.10 als VLAN nu leeg is).
+# Oude WAN-VLAN-subinterfaces opruimen (bijv. enp1s0.10 als VLAN niet actief is).
 if exists "$WAN"; then
     for entry in /sys/class/net/"$WAN".*; do
         [ -e "$entry" ] || continue
@@ -154,13 +158,13 @@ if exists "$WAN"; then
     done
 fi
 """
-    if i.wan_vlan_id:
+    if active_vlan:
         vlan_block = f"""
-if ! exists "{i.wan_iface}" && exists "$WAN"; then
-    $IP link add link "$WAN" name "{i.wan_iface}" type vlan id {i.wan_vlan_id} 2>/dev/null || true
+if ! exists "{active_wan}" && exists "$WAN"; then
+    $IP link add link "$WAN" name "{active_wan}" type vlan id {active_vlan} 2>/dev/null || true
 fi
-if exists "{i.wan_iface}"; then
-    $IP link set dev "{i.wan_iface}" up 2>/dev/null || true
+if exists "{active_wan}"; then
+    $IP link set dev "{active_wan}" up 2>/dev/null || true
 fi
 """
     # Na de eerste setup: poorten die niet als LAN gekozen zijn, uit de bridge halen.
@@ -288,9 +292,9 @@ $IP route del default dev "$BR" 2>/dev/null || true
 set -u
 IP=/usr/sbin/ip
 WAN="{i.wan}"
-WAN_IFACE="{i.wan_iface}"
+WAN_IFACE="{active_wan}"
 WAN_MODE="{i.wan_mode}"
-VLAN_ID="{i.wan_vlan_id or ''}"
+VLAN_ID="{active_vlan or ''}"
 BR="{i.lan_bridge}"
 LAN_IP="{i.lan_ip}"
 PREFIX="{i.lan_prefix}"
@@ -585,7 +589,7 @@ def render_pppoe_check_script(cfg: Config) -> str:
     """Ping de modem/ONT vóór PPPoE, maar blokkeer nooit: in bridge-modus
     hoeft de modem niet op een ping te antwoorden."""
     modem = shlex.quote(cfg.interfaces.wan_static_gateway)
-    wan_iface = shlex.quote(cfg.interfaces.wan_iface)
+    wan_iface = shlex.quote(cfg.active_wan_iface)
     return f"""#!/bin/sh
 # Gegenereerd door Bassie-Router: controleer de DSL-modem/ONT vóór PPPoE.
 WAN_IFACE={wan_iface}

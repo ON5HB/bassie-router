@@ -13,15 +13,15 @@ def _comment(text: str) -> str:
 def render_nft(cfg: Config) -> str:
     i = cfg.interfaces
     fw = cfg.firewall
-    # Geen wildcard in een set: nftables vergelijkt ifname-setleden exact,
-    # waardoor 'ppp+' in een set ppp0 niet zou matchen. Elke WAN-regel wordt
-    # daarom tweemaal uitgeschreven: once voor de fysieke NIC en once los met
-    # oifname/iifname "ppp+".
-    wan = f'"{i.wan_iface}"'
+    # nftables gebruikt '*' als wildcard voor interfacenamen; '+' is de
+    # iptables-syntax en matcht nooit ppp0. Elke WAN-regel wordt daarom
+    # tweemaal uitgeschreven: één voor de fysieke WAN-interface en één los
+    # met oifname/iifname "ppp*" voor de PPPoE-interface.
+    wan = f'"{cfg.active_wan_iface}"'
     lan = f'"{i.lan_iface}"'
 
     def wan_rules(rule: str) -> list[str]:
-        return [rule, rule.replace("$WAN", '"ppp+"')]
+        return [rule, rule.replace("$WAN", '"ppp*"')]
 
     no_track = ""
     if fw.no_track_udp_ports:

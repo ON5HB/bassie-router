@@ -632,14 +632,16 @@ def create_app(
                 i = cfg.interfaces
                 i.wan = request.form.get("wan", i.wan).strip()
                 i.lan_ports = [port for port in i.lan_ports if port != i.wan]
-                vlan = request.form.get("wan_vlan_id", "").strip()
-                i.wan_vlan_id = (int(vlan) or None) if vlan else None  # 0 = geen VLAN
                 # Stap 1: de NIC kiest DHCP of statisch. Stap 2: PPPoE erover ->
                 # ppp0 wordt de uplink; zonder PPPoE routeert de NIC zelf.
+                # Het VLAN-id blijft ingesteld (en zichtbaar in de GUI), maar
+                # is alleen actief zolang PPPoE aan staat.
+                enabled = _bool(request.form, "client_enabled")
+                vlan = request.form.get("wan_vlan_id", "").strip()
+                i.wan_vlan_id = (int(vlan) or None) if vlan else None
                 nic_mode = request.form.get("wan_nic_mode", "dhcp").strip()
                 if nic_mode not in ("dhcp", "static"):
                     nic_mode = "dhcp"
-                enabled = _bool(request.form, "client_enabled")
                 i.wan_mode = "pppoe" if enabled else nic_mode
                 i.wan_static_ip = request.form.get("wan_static_ip", i.wan_static_ip).strip()
                 i.wan_static_prefix = _int(

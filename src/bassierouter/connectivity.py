@@ -46,7 +46,7 @@ def _route_iface_ok(route: str, cfg: Config) -> bool:
         return False
     if cfg.interfaces.wan_mode == "pppoe":
         return "ppp" in route
-    return cfg.interfaces.wan_iface in route
+    return cfg.active_wan_iface in route
 
 
 def run_checks(cfg: Config, runner: CommandRunner | None = None) -> list[ConnectivityCheck]:
@@ -75,19 +75,19 @@ def run_checks(cfg: Config, runner: CommandRunner | None = None) -> list[Connect
         default_route or "geen default route",
     ))
 
-    link = runner.run(["ip", "-br", "link", "show", "dev", cfg.interfaces.wan_iface])
+    link = runner.run(["ip", "-br", "link", "show", "dev", cfg.active_wan_iface])
     state = _link_state(link.stdout)
     checks.append(ConnectivityCheck(
         "WAN-link actief",
         state.upper() == "UP",
-        f"{cfg.interfaces.wan_iface}: {state or 'onbekend'}",
+        f"{cfg.active_wan_iface}: {state or 'onbekend'}",
     ))
 
     if cfg.pppoe_client.enabled and cfg.interfaces.wan_mode == "pppoe":
         modem = cfg.interfaces.wan_static_gateway
         if not modem:
             nic_routes = runner.run([
-                "ip", "-4", "route", "show", "dev", cfg.interfaces.wan_iface
+                "ip", "-4", "route", "show", "dev", cfg.active_wan_iface
             ])
             modem = _first_via(nic_routes.stdout)
         modem_ping = (

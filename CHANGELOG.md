@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.56 — 2026-11-26
+
+- PPPoE-VLAN alleen actief bij PPPoE aan (waarde blijft bewaard); nftables-wildcard ppp* gecorrigeerd
+
 ## 0.1.55 — 2026-11-26
 
 - install.sh herkent git-checkout in /opt/bassie-router en kopieert src niet naar zichzelf
