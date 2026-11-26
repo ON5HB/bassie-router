@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.50
+Versie: 0.1.51
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -323,6 +323,10 @@ zien: MAC-adres, IP-adres, naam en wanneer de lease is gezien.
 - Ook `bassie-links.service` en de PPPoE-client worden na toepassen expliciet
   herstart. Zonder dat blijft een nieuw WAN-VLAN-id ontbreken als
   `enp1s0.<id>` en gebruikt pppd oude instellingen.
+- nftables zet de TCP-MSS naar de route-MTU (`tcp option maxseg size set rt
+  mtu`). PPPoE heeft MTU 1492 terwijl het LAN 1500 gebruikt; zonder clamping
+  werken ping en DNS, maar blijven grote TCP-pakketten (websites, HTTPS)
+  hangen met `Frag needed and DF set (mtu = 1492)`. De LAN-MTU blijft 1500.
 - dnsmasq start pas ná `bassie-links.service` (drop-in
   `/etc/systemd/system/dnsmasq.service.d/10-bassie.conf`) en gebruikt
   `bind-dynamic`. Zo wacht hij op het LAN-adres in plaats van te falen met
@@ -449,5 +453,5 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.50.zip`; pak die uit op de
+De complete first-release zip is `bassie-router-v0.1.51.zip`; pak die uit op de
 Debian-router en draai `bash install.sh` als root.

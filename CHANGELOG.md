@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.51 — 2026-11-26
+
+- TCP-MSS clamping naar de PPPoE-route-MTU, zodat websites vanaf het LAN wél laden
+
 ## 0.1.50 — 2026-11-26
 
 - bassie-links en PPPoE-client herstarten na toepassen, zodat een nieuw WAN-VLAN direct als subinterface bestaat

@@ -30,6 +30,7 @@ def test_nft_is_ipv4_only_and_wan_closed():
     assert "table ip6" not in rules
     assert "policy drop;" in rules
     assert "oifname $WAN masquerade" in rules
+    assert "tcp option maxseg size set rt mtu" in rules
     assert "iifname $LAN oifname $WAN accept" in rules
     assert 'iifname $LAN oifname $WAN udp dport 53 drop comment "DNS alleen via router"' in rules
     assert 'iifname $LAN oifname $WAN tcp dport 53 drop comment "DNS alleen via router"' in rules

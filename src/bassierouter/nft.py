@@ -117,6 +117,12 @@ def render_nft(cfg: Config) -> str:
             '        iifname $LAN oifname $WAN tcp dport 53 drop comment "DNS alleen via router"',
         ]
     lines += [
+        # PPPoE heeft een lagere MTU (standaard 1492) dan het LAN (1500).
+        # Zonder MSS-clamping laat de router kleine verzoeken (ping, DNS) door,
+        # maar blijven grote TCP-segmenten met DF-bit hangen: websites laden
+        # niet, ook al heeft de router zelf internet.
+        '        oifname $WAN tcp flags syn tcp option maxseg size set rt mtu '
+        'comment "TCP-MSS naar WAN/PPPoE-MTU"',
         "        iifname $LAN oifname $WAN accept",
     ]
     for rule in fw.forwards:
