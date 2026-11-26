@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.52
+Versie: 0.1.53
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -17,7 +17,7 @@ als iets niet klopt — zoals een verzonnen IP-adres of een GUI die stiekem
 zonder login opende. **Big Pickle**, de AI-assistent in
 [OpenCode](https://opencode.ai), schrijft de code: nftables, PPPoE-client,
 bridge/DHCP/DNS, de Flask-GUI, de upgrade- en rollback-logica en de tests.
-Elke fix krijgt een versie en een zip, zodat je altijd terug kunt.
+Elke fix krijgt een versie in git, zodat je altijd terug kunt.
 
 Wil je de assistent zelf vinden of een soortgelijk project bouwen? Kijk op
 **https://opencode.ai** — de open source coding agent waar Big Pickle in draait.
@@ -55,6 +55,7 @@ ip -br link
 
 In de GUI kies je de WAN-interface bij **Provider → WAN & VLAN** en de
 LAN-poorten bij **Netwerk**, uit dropdowns met de werkelijk aanwezige NIC's.
+De **Provider VLAN-id** staat bij **Provider → Stap 2: PPPoE**.
 Bestaande waarden blijven zichtbaar als de NIC op dat moment niet aanwezig is.
 
 ## Installatie (Debian 13, headless, root)
@@ -65,9 +66,9 @@ bash /opt/bassie-router-src/install.sh
 ```
 
 Het script installeert `nftables ppp dnsmasq iproute2 isc-dhcp-client
-curl python3 python3-flask linux-tools-common` (voor `cpupower`) en, als
-`python3-pam` ontbreekt, `pamtester`. De code
-gaat naar `/opt/bassie-router`,
+curl git python3 python3-flask linux-tools-common` (voor `cpupower`) en, als
+`python3-pam` ontbreekt, `pamtester`. `git` is nodig voor latere updates.
+De code gaat naar `/opt/bassie-router`,
 maakt
 `/etc/bassie-router/config.json` en start de GUI-service.
 
@@ -273,6 +274,9 @@ komt. Welke van de twee je nodig hebt, hangt af van de DSL-modem:
   een ping te reageren. Een mislukte ping is dus alleen een waarschuwing.
 - De modem moet in bridge-mode staan, of het is een Fiber ONT die PPPoE
   doorgeeft. Het is geen telefoonmodem.
+- De sessie wordt elke 30 seconden gecontroleerd met een LCP-echo. Eén gemiste
+  echo is genoeg om te verbreken (`lcp-echo-failure 1`); daarna probeert pppd
+  direct opnieuw. Vroeger duurde dat ~2 minuten.
 
 De keuze staat in `config.json` als `interfaces.wan_mode` (`dhcp`, `static` of
 `pppoe`). `wan_mode=pppoe` ontstaat alleen als PPPoE écht is ingeschakeld.
@@ -459,5 +463,12 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.52.zip`; pak die uit op de
-Debian-router en draai `bash install.sh` als root.
+Updates gaan zonder zip. Op de router:
+
+```sh
+cd /opt/bassie-router-src
+git pull
+bash install.sh
+```
+
+`install.sh` reboot automatisch; de laatste zichtbare regel is `REBOOT!`.

@@ -26,6 +26,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     isc-dhcp-client \
     iputils-ping \
     curl \
+    git \
     python3 \
     python3-flask
 

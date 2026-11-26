@@ -359,8 +359,12 @@ def render_client_options(cfg: Config) -> str:
         "noauth",
         "persist",
         "maxfail 0",
+        # Elke 30 seconden een echo; één gemiste echo betekent disconnect.
+        # Met 4 pogingen duurde het ~2 minuten voordat een dode sessie werd
+        # vervangen, terwijl de provider de sessie al eerder kan hebben laten
+        # vallen.
         "lcp-echo-interval 30",
-        "lcp-echo-failure 4",
+        "lcp-echo-failure 1",
         f"mtu {c.mtu}",
         "plugin rp-pppoe.so",
         # pppd verwacht de ethernet-interface als 'nic-<naam>' (ook bij

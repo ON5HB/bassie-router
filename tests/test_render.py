@@ -296,6 +296,8 @@ def test_pppoe_options_use_nic_prefix_for_vlan_interface():
     assert "plugin rp-pppoe.so" in text
     assert "nic-enp1s0.10" in text
     assert "\nenp1s0.10\n" not in text
+    assert "lcp-echo-interval 30" in text
+    assert "lcp-echo-failure 1" in text
 
 
 def test_pppoe_check_pings_modem_before_starting_pppd():

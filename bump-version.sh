@@ -1,6 +1,7 @@
 #!/bin/bash
-# Nieuwe versie van Bassie-Router vastleggen en een nieuwe zip bouwen.
+# Nieuwe versie van Bassie-Router vastleggen in de source.
 # Gebruik: ./bump-version.sh 0.1.2 "korte omschrijving van de wijziging"
+# Er wordt geen zip gebouwd: de router haalt updates met 'git pull'.
 set -euo pipefail
 
 NEW=${1:?gebruik: ./bump-version.sh 0.1.2 "omschrijving"}
@@ -53,9 +54,5 @@ entry = f"## {new} — {date.today().isoformat()}\n\n- {msg}\n\n"
 changelog.write_text(f"{head}\n\n{entry}{rest.lstrip(chr(10))}", encoding="utf-8")
 PY
 
-# Oude versies bewust laten staan, zodat je kunt terugvallen.
-zip -r -q "bassie-router-v${NEW}.zip" . \
-    -x '.git/*' -x 'bassie-router-v*.zip' \
-    -x '.pytest_cache/*' -x '*/__pycache__/*' -x '*.pyc'
 echo "Versie ${NEW} vastgelegd in VERSION, pyproject.toml, __init__.py, README.md en CHANGELOG.md"
-echo "Zip: bassie-router-v${NEW}.zip"
+echo "Geen zip: push de source en doe op de router 'git pull' + 'bash install.sh'."

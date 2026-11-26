@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.53 — 2026-11-26
+
+- LCP-keepalive: bij één gemiste echo van 30 seconden direct verbreken en opnieuw verbinden
+
 ## 0.1.52 — 2026-11-26
 
 - WAN-regels expliciet voor ppp+, bridge zonder VLAN-filtering en VLAN-id bij PPPoE in de GUI
