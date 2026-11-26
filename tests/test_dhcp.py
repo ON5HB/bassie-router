@@ -173,10 +173,8 @@ def test_dhcp_page_can_remove_reservation(tmp_path):
     assert load_config(cfg_file).interfaces.dhcp_reservations == []
 
 
-def test_dashboard_shows_dhcp_server_active(tmp_path):
+def test_dhcp_page_shows_dhcp_server_active(tmp_path):
     client, _ = _client(tmp_path)
-    body = client.get("/").data
-    assert b"DHCP-server op LAN" in body
-    assert b"DHCP-klanten bekijken" in body
-    assert b"Dnsmasq geeft adressen uit op" in body
-    assert b"de poort <code>switch</code>" in body
+    body = client.get("/dhcp").data
+    assert b"DHCP-server op LAN:" in body
+    assert b"<code>switch</code>" in body

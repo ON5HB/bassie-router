@@ -52,7 +52,6 @@
       {% endif %}
       <dt>GUI luistert op</dt><dd><code>{{ cfg.gui.bind }}:{{ cfg.gui.port }}</code></dd>
       <dt>LAN-poorten</dt><dd>{{ cfg.interfaces.lan_ports|join(', ') }}</dd>
-      <dt>WAN-VLAN</dt><dd>{% if cfg.active_vlan_id %}802.1Q tag {{ cfg.active_vlan_id }}{% elif cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }} (niet actief: PPPoE uit){% else %}geen (untagged){% endif %}</dd>
     </dl>
   </section>
   <section class="card">
@@ -60,7 +59,7 @@
     <dl>
       <dt>PPPoE-client</dt><dd>{{ 'aan' if cfg.pppoe_client.enabled else 'uit' }}</dd>
       <dt>Account</dt><dd><code>{{ cfg.pppoe_client.username or '-' }}</code></dd>
-      <dt>Provider VLAN</dt><dd>{% if cfg.active_vlan_id %}802.1Q tag {{ cfg.active_vlan_id }}{% elif cfg.interfaces.wan_vlan_id %}802.1Q tag {{ cfg.interfaces.wan_vlan_id }} (niet actief: PPPoE uit){% else %}geen (untagged){% endif %}</dd>
+      <dt>WAN-VLAN</dt><dd>{% if cfg.active_vlan_id %}VLAN {{ cfg.active_vlan_id }} in gebruik{% else %}VLAN 0 (uit){% endif %}</dd>
       <dt>Actieve ppp-links</dt><dd>{{ state.ppp_interfaces|join(', ') or 'geen' }}</dd>
     </dl>
   </section>
@@ -68,7 +67,7 @@
     <h2>Services</h2>
     <table>
       {% for unit, active in state.services.items() %}
-        <tr><td><code>{{ unit }}</code></td><td class="{{ 'ok-text' if active == 'active' else 'muted' }}">{{ active }}</td></tr>
+        <tr><td><code>{{ unit }}</code></td><td class="{{ 'ok-text' if active == 'active' else 'hot-text' }}">{{ 'Actief' if active == 'active' else 'Uit' }}</td></tr>
       {% endfor %}
     </table>
   </section>
@@ -111,18 +110,6 @@
       </tbody>
     </table>
     <p class="hint">Deze checks worden bij elke pagina-refresh opnieuw uitgevoerd. <a href="{{ url_for('dashboard') }}">Opnieuw controleren</a>.</p>
-  </section>
-  <section class="card">
-    <h2>DHCP-server op LAN</h2>
-    <p>
-      {% if cfg.interfaces.dhcp_enabled %}
-        <strong class="ok-text">AAN</strong> — Dnsmasq geeft adressen uit op
-        de poort <code>{{ cfg.interfaces.lan_bridge }}</code>.
-      {% else %}
-        <strong class="hot-text">UIT</strong> — de router is zelf DHCP-klant.
-      {% endif %}
-    </p>
-    <p><a class="button" href="{{ url_for('dhcp_clients') }}">DHCP-klanten bekijken</a></p>
   </section>
 </div>
 

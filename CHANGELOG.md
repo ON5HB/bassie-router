@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.58 — 2026-11-26
+
+- Status opgeschoond: Actief/Uit bij Services, WAN-VLAN naar Provider, DHCP-kaart verplaatst en eenvoudige VLAN-tekst
+
 ## 0.1.57 — 2026-11-26
 
 - Korte duidelijke Provider-teksten, DHCP-info in GUI en instelbare PPPoE-idle-timeout (300 s)
