@@ -288,7 +288,8 @@ def test_pppoe_check_pings_modem_before_starting_pppd():
     assert 'MODEM="192.168.1.1"' in text
     assert '/run/bassie-router/modem-ip' in text
     assert '"$PING" -4 -c 1 -W 1 -q -n "$MODEM"' in text
-    assert "PPPoE niet gestart" in text
+    assert "PPPoE start toch" in text
+    assert "exit 0" in text
     result = subprocess.run(["sh", "-n"], input=text, text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
     unit = render_systemd_units(cfg)["/etc/systemd/system/bassie-pppoe-client.service"]

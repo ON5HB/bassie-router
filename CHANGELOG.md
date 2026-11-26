@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.48 — 2026-11-26
+
+- PPPoE-start blokkeert niet meer op een onbereikbare modem-ping; groene melding donkergroen met witte tekst
+
 ## 0.1.47 — 2026-11-25
 
 - dnsmasq start na bassie-links met bind-dynamic; geen bind-fout meer bij vroeg opstarten

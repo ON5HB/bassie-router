@@ -572,7 +572,8 @@ done
 
 
 def render_pppoe_check_script(cfg: Config) -> str:
-    """Ping de modem/ONT vóór PPPoE; geen modem-adres betekent: niet blokkeren."""
+    """Ping de modem/ONT vóór PPPoE, maar blokkeer nooit: in bridge-modus
+    hoeft de modem niet op een ping te antwoorden."""
     modem = shlex.quote(cfg.interfaces.wan_static_gateway)
     wan_iface = shlex.quote(cfg.interfaces.wan_iface)
     return f"""#!/bin/sh
@@ -609,8 +610,8 @@ while [ "$n" -lt "$TRIES" ]; do
     [ "$n" -ge "$TRIES" ] && break
     sleep 2
 done
-echo "bassie-pppoe-check: modem $MODEM niet bereikbaar na $TRIES pogingen; PPPoE niet gestart" >&2
-exit 1
+echo "bassie-pppoe-check: modem $MODEM niet bereikbaar na $TRIES pogingen; PPPoE start toch" >&2
+exit 0
 """
 
 

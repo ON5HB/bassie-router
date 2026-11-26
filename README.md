@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.47
+Versie: 0.1.48
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -268,8 +268,9 @@ komt. Welke van de twee je nodig hebt, hangt af van de DSL-modem:
   `replacedefaultroute`, `usepeerdns`).
 - Vul je bij PPPoE een beheeradres in (bijv. `192.168.1.2` bij modem
   `192.168.1.1`), dan krijgt de NIC dat adres mét een route naar de modem,
-  zonder default route. De router pingt dat modem-adres en start PPPoE pas als
-  het bereikbaar is.
+  zonder default route. De router pingt dat modem-adres nog wel, maar start
+  PPPoE ook als de modem niet antwoordt: in bridge-mode hoeft de modem niet op
+  een ping te reageren. Een mislukte ping is dus alleen een waarschuwing.
 - De modem moet in bridge-mode staan, of het is een Fiber ONT die PPPoE
   doorgeeft. Het is geen telefoonmodem.
 
@@ -445,5 +446,5 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.47.zip`; pak die uit op de
+De complete first-release zip is `bassie-router-v0.1.48.zip`; pak die uit op de
 Debian-router en draai `bash install.sh` als root.
