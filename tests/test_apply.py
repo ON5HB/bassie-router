@@ -110,6 +110,17 @@ def test_apply_reloads_nftables_after_writing_rules():
     assert ["nft", "-f", "/etc/nftables.conf"] in build_commands(Config())
 
 
+def test_apply_reloads_links_and_pppoe_after_vlan_change():
+    cfg = Config()
+    cfg.interfaces.wan = "enp1s0"
+    cfg.interfaces.wan_vlan_id = 10
+    cfg.interfaces.wan_mode = "pppoe"
+    cfg.pppoe_client.enabled = True
+    commands = build_commands(cfg)
+    assert ["systemctl", "restart", "bassie-links.service"] in commands
+    assert ["systemctl", "restart", "bassie-pppoe-client.service"] in commands
+
+
 def test_config_consistency_compares_config_with_active_state():
     cfg = Config()
     runner = FakeRunner({

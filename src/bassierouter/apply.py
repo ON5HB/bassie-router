@@ -106,6 +106,9 @@ def build_commands(cfg: Config) -> list[list[str]]:
         ],
         ["systemctl", "enable", "--now", "bassie-factory-boot.service"],
         ["systemctl", "enable", "--now", "bassie-links.service"],
+        # 'enable --now' voert een al actieve dienst niet opnieuw uit. Zonder
+        # deze restart blijft een nieuw WAN-VLAN-id ontbreken als subinterface.
+        ["systemctl", "restart", "bassie-links.service"],
         [
             "systemctl",
             "disable" if cfg.interfaces.dhcp_enabled else "enable",
@@ -122,6 +125,10 @@ def build_commands(cfg: Config) -> list[list[str]]:
     pppoe_active = cfg.interfaces.wan_mode == "pppoe" and cfg.pppoe_client.enabled
     action = "enable" if pppoe_active else "disable"
     commands.append(["systemctl", action, "--now", "bassie-pppoe-client.service"])
+    if pppoe_active:
+        # Ook hier herlaadt 'enable --now' geen al draaiende pppd: nieuwe
+        # VLAN-interface of credentials moeten wél in de volgende sessie.
+        commands.append(["systemctl", "restart", "bassie-pppoe-client.service"])
     # Geen restart van de GUI hier: dat doodt het lopende verzoek vóór de
     # 'actief'-snapshot is geschreven. Alleen bij een gewijzigd bindadres/poort
     # wordt hieronder uitgesteld herstart.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.50 — 2026-11-26
+
+- bassie-links en PPPoE-client herstarten na toepassen, zodat een nieuw WAN-VLAN direct als subinterface bestaat
+
 ## 0.1.49 — 2026-11-26
 
 - PPPoE-interface voortaan met nic- prefix, zodat pppd een VLAN-subinterface accepteert

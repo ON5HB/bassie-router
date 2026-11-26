@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.49
+Versie: 0.1.50
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -320,6 +320,9 @@ zien: MAC-adres, IP-adres, naam en wanneer de lease is gezien.
 - nftables wordt na elke toepassing expliciet herladen met
   `nft -f /etc/nftables.conf`; `enable --now` herlaadt een draaiende service
   niet. Daardoor kunnen config en actieve regels niet uit sync raken.
+- Ook `bassie-links.service` en de PPPoE-client worden na toepassen expliciet
+  herstart. Zonder dat blijft een nieuw WAN-VLAN-id ontbreken als
+  `enp1s0.<id>` en gebruikt pppd oude instellingen.
 - dnsmasq start pas ná `bassie-links.service` (drop-in
   `/etc/systemd/system/dnsmasq.service.d/10-bassie.conf`) en gebruikt
   `bind-dynamic`. Zo wacht hij op het LAN-adres in plaats van te falen met
@@ -446,5 +449,5 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.49.zip`; pak die uit op de
+De complete first-release zip is `bassie-router-v0.1.50.zip`; pak die uit op de
 Debian-router en draai `bash install.sh` als root.
