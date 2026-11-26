@@ -521,6 +521,49 @@ def config_consistency(
     return checks
 
 
+def service_status(
+    cfg: Config,
+    runner: CommandRunner | None = None,
+    *,
+    root: str = "/",
+) -> list[dict[str, str | bool]]:
+    """Status van de services, met echte controles voor DNS en DHCP."""
+    runner = runner or LocalRunner()
+
+    def active(unit: str) -> bool:
+        return runner.run(["systemctl", "is-active", unit]).stdout.strip() == "active"
+
+    dnsmasq = active("dnsmasq.service")
+    dns_ok = dnsmasq and bool(
+        runner.run(["getent", "ahostsv4", "debian.org"]).stdout.strip()
+    )
+    dhcp_ok = False
+    if dnsmasq and cfg.interfaces.dhcp_enabled:
+        try:
+            conf = _local_path(
+                root, "/etc/dnsmasq.d/bassie-router.conf"
+            ).read_text(encoding="utf-8")
+        except OSError:
+            conf = ""
+        # Een tweede DHCP-server in het LAN maakt de router zelf DHCP-klant.
+        dhcp_ok = "dhcp-range=" in conf and not active("bassie-lan-dhcp.service")
+
+    pppoe_needed = cfg.interfaces.wan_mode == "pppoe" and cfg.pppoe_client.enabled
+    entries = (
+        ("Firewall", active("nftables.service"), True),
+        ("DHCP server", dhcp_ok, cfg.interfaces.dhcp_enabled),
+        ("DNS server", dns_ok, True),
+        ("LAN-adres ophalen", active("bassie-lan-dhcp.service"), not cfg.interfaces.dhcp_enabled),
+        ("CPU snelheid", active("bassie-cpu.service"), True),
+        ("Routering", active("bassie-router.service"), True),
+        ("PPPoE klant", active("bassie-pppoe-client.service"), pppoe_needed),
+    )
+    return [
+        {"name": name, "active": "active" if ok else "inactive", "needed": needed}
+        for name, ok, needed in entries
+    ]
+
+
 def status(
     cfg: Config,
     runner: CommandRunner | None = None,
@@ -536,10 +579,7 @@ def status(
             interfaces = json.loads(result.stdout)
         except json.JSONDecodeError:
             interfaces = []
-    services_state = {}
-    for unit in ("nftables.service", "dnsmasq.service", *UNITS[1:]):
-        res = runner.run(["systemctl", "is-active", unit])
-        services_state[unit] = res.stdout.strip() or "inactive"
+    services_state = service_status(cfg, runner, root=root)
     return {
         "wan": cfg.active_wan_iface,
         "lan": cfg.interfaces.lan_iface,

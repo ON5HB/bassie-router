@@ -19,25 +19,6 @@
   </div>
 {% endif %}
 
-{% if consistency %}
-<section class="card">
-  <h2>Configuratie-controle</h2>
-  <table>
-    <thead><tr><th>Onderdeel</th><th>Config / actief</th><th>Status</th></tr></thead>
-    <tbody>
-    {% for check in consistency %}
-      <tr>
-        <td>{{ check.name }}</td>
-        <td class="muted">{{ check.detail }}</td>
-        <td class="{{ 'ok-text' if check.ok else 'hot-text' }}">{{ 'klopt' if check.ok else 'WIJKT AF' }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  <p class="hint">Deze tabel vergelijkt de opgeslagen instellingen met wat er echt actief is op de router. Bij <strong>WIJKT AF</strong> eerst opslaan, of controleren of nftables is herladen.</p>
-</section>
-{% endif %}
-
 <div class="grid">
   <section class="card">
     <h2>Interfaces</h2>
@@ -66,8 +47,8 @@
   <section class="card">
     <h2>Services</h2>
     <table>
-      {% for unit, active in state.services.items() %}
-        <tr><td><code>{{ unit }}</code></td><td class="{{ 'ok-text' if active == 'active' else 'hot-text' }}">{{ 'Actief' if active == 'active' else 'Uit' }}</td></tr>
+      {% for service in state.services %}
+        <tr><td>{{ service.name }}</td><td class="{{ 'muted' if not service.needed else ('ok-text' if service.active == 'active' else 'hot-text') }}">{{ 'niet nodig' if not service.needed else ('Actief' if service.active == 'active' else 'Uit') }}</td></tr>
       {% endfor %}
     </table>
   </section>

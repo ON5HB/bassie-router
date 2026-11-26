@@ -9,9 +9,45 @@ from bassierouter.apply import (
     discard_changes,
     pending_changes,
     rollback,
+    service_status,
 )
 from bassierouter.config import Config, PortForward, load_config, save_config
 from bassierouter.runner import CommandResult, FakeRunner
+
+
+def _dhcp_root(tmp_path) -> str:
+    conf = tmp_path / "etc" / "dnsmasq.d" / "bassie-router.conf"
+    conf.parent.mkdir(parents=True, exist_ok=True)
+    conf.write_text("dhcp-range=192.168.88.10,192.168.88.200,10m\n", encoding="utf-8")
+    return str(tmp_path)
+
+
+def test_service_status_checks_dns_and_dhcp_function(tmp_path):
+    cfg = Config()
+    cfg.interfaces.dhcp_enabled = True
+    runner = FakeRunner({
+        "systemctl is-active dnsmasq.service": CommandResult([], stdout="active\n"),
+        "getent ahostsv4 debian.org": CommandResult([], stdout="87.118.104.17\n"),
+    })
+    services = {s["name"]: s for s in service_status(
+        cfg, runner, root=_dhcp_root(tmp_path)
+    )}
+    assert services["DNS server"]["active"] == "active"
+    assert services["DHCP server"]["active"] == "active"
+
+
+def test_service_status_detects_other_dhcp_server(tmp_path):
+    cfg = Config()
+    cfg.interfaces.dhcp_enabled = True
+    runner = FakeRunner({
+        "systemctl is-active dnsmasq.service": CommandResult([], stdout="active\n"),
+        "systemctl is-active bassie-lan-dhcp.service": CommandResult([], stdout="active\n"),
+        "getent ahostsv4 debian.org": CommandResult([], stdout="87.118.104.17\n"),
+    })
+    services = {s["name"]: s for s in service_status(
+        cfg, runner, root=_dhcp_root(tmp_path)
+    )}
+    assert services["DHCP server"]["active"] == "inactive"
 
 
 def test_dry_run_does_not_write(tmp_path):

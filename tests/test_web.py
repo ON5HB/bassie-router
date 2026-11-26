@@ -418,12 +418,32 @@ def test_apply_banner_uses_lan_ip_with_dhcp_on(tmp_path):
     assert b"DHCP-server is uit" not in body
 
 
-def test_dashboard_shows_config_consistency(tmp_path):
+def test_dashboard_uses_friendly_service_names(tmp_path):
     client, _ = make_client(tmp_path)
     body = client.get("/").data
-    assert b"Configuratie-controle" in body
-    assert b"DNS van LAN via router" in body
-    assert b"WIJKT AF" in body
+    assert b">Firewall</td>" in body
+    assert b">DHCP server</td>" in body
+    assert b">DNS server</td>" in body
+    assert body.index(b">DHCP server</td>") < body.index(b">DNS server</td>")
+    assert b"nftables.service" not in body
+
+
+def test_dashboard_hides_consistency_table(tmp_path):
+    client, _ = make_client(tmp_path)
+    body = client.get("/").data
+    assert b"Configuratie-controle" not in body
+    assert b"WIJKT AF" not in body
+
+
+def test_dashboard_marks_unused_services(tmp_path):
+    cfg = Config()
+    cfg.interfaces.dhcp_enabled = True
+    cfg_file = tmp_path / "config.json"
+    save_config(cfg, cfg_file)
+    client, _ = make_client(tmp_path)
+    body = client.get("/").data
+    assert b">LAN-adres ophalen</td>" in body
+    assert b"niet nodig" in body
 
 
 def test_firewall_warns_when_dns_state_differs(tmp_path):

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.59 — 2026-11-26
+
+- Status: vriendelijke servicenamen, functionele DNS/DHCP-checks en fabrieksreset uit lijst
+
 ## 0.1.58 — 2026-11-26
 
 - Status opgeschoond: Actief/Uit bij Services, WAN-VLAN naar Provider, DHCP-kaart verplaatst en eenvoudige VLAN-tekst
