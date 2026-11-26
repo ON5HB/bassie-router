@@ -310,6 +310,10 @@ while ! exists "$BR"; do
     sleep 1
 done
 
+# De LAN-bridge is altijd untagged: VLAN 10 hoort alleen bij de WAN-subinterface.
+# Zet VLAN-filtering expliciet uit, ook als een eerdere configuratie die aan had.
+exists "$BR" && $IP link set dev "$BR" type bridge vlan_filtering 0 2>/dev/null || true
+
 # Daarna kort wachten op definitieve kaartnamen (enp* i.p.v. eth*).
 command -v udevadm >/dev/null 2>&1 && timeout 10 udevadm settle >/dev/null 2>&1 || true
 

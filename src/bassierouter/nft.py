@@ -13,8 +13,16 @@ def _comment(text: str) -> str:
 def render_nft(cfg: Config) -> str:
     i = cfg.interfaces
     fw = cfg.firewall
-    wan = f'{{ "{i.wan_iface}", "ppp+" }}'
+    # Geen wildcard in een set: nftables vergelijkt ifname-setleden exact,
+    # waardoor 'ppp+' in een set ppp0 niet zou matchen. Elke WAN-regel wordt
+    # daarom tweemaal uitgeschreven: once voor de fysieke NIC en once los met
+    # oifname/iifname "ppp+".
+    wan = f'"{i.wan_iface}"'
     lan = f'"{i.lan_iface}"'
+
+    def wan_rules(rule: str) -> list[str]:
+        return [rule, rule.replace("$WAN", '"ppp+"')]
+
     no_track = ""
     if fw.no_track_udp_ports:
         ports = ", ".join(str(p) for p in fw.no_track_udp_ports)
@@ -55,7 +63,7 @@ def render_nft(cfg: Config) -> str:
     ]
     for index, rule in timeouts:
         src = "" if rule.source.strip().lower() == "any" else f"ip saddr {rule.source} "
-        lines.append(
+        lines += wan_rules(
             f"        iifname $WAN {src}udp dport {rule.external_port} "
             f'ct state new ct timeout set "fwd_{index}" '
             f'comment "{_comment(rule.name)} udp-timeout"'
@@ -63,7 +71,7 @@ def render_nft(cfg: Config) -> str:
 
     for rule in fw.forwards:
         src = "" if rule.source.strip().lower() == "any" else f"ip saddr {rule.source} "
-        lines.append(
+        lines += wan_rules(
             f'        iifname $WAN {src}{rule.protocol} dport {rule.external_port} '
             f'dnat to {rule.internal_ip}:{rule.internal_port} '
             f'comment "{_comment(rule.name)}"'
@@ -80,7 +88,9 @@ def render_nft(cfg: Config) -> str:
         "        iif lo accept",
     ]
     if fw.allow_ping_wan:
-        lines.append("        iifname $WAN ip protocol icmp icmp type echo-request accept")
+        lines += wan_rules(
+            "        iifname $WAN ip protocol icmp icmp type echo-request accept"
+        )
     if fw.allow_ssh_lan:
         lines.append("        iifname $LAN tcp dport 22 accept")
     if fw.allow_gui_lan:
@@ -88,7 +98,7 @@ def render_nft(cfg: Config) -> str:
             f'        iifname $LAN tcp dport {cfg.gui.port} accept comment "Bassie-Router GUI"'
         )
     if fw.allow_gui_bootstrap:
-        lines.append(
+        lines += wan_rules(
             f'        iifname $WAN tcp dport {cfg.gui.port} accept '
             'comment "Bassie-Router GUI (initiele setup)"'
         )
@@ -101,8 +111,8 @@ def render_nft(cfg: Config) -> str:
     if no_track:
         lines += [
             '        iifname $LAN udp dport $NO_TRACK accept',
-            '        iifname $WAN udp sport $NO_TRACK accept',
         ]
+        lines += wan_rules('        iifname $WAN udp sport $NO_TRACK accept')
     lines += [
         "    }",
         "",
@@ -112,22 +122,24 @@ def render_nft(cfg: Config) -> str:
         "        ct state invalid drop",
     ]
     if fw.force_lan_dns_via_router:
-        lines += [
-            '        iifname $LAN oifname $WAN udp dport 53 drop comment "DNS alleen via router"',
-            '        iifname $LAN oifname $WAN tcp dport 53 drop comment "DNS alleen via router"',
-        ]
-    lines += [
-        # PPPoE heeft een lagere MTU (standaard 1492) dan het LAN (1500).
-        # Zonder MSS-clamping laat de router kleine verzoeken (ping, DNS) door,
-        # maar blijven grote TCP-segmenten met DF-bit hangen: websites laden
-        # niet, ook al heeft de router zelf internet.
+        lines += wan_rules(
+            '        iifname $LAN oifname $WAN udp dport 53 drop comment "DNS alleen via router"'
+        )
+        lines += wan_rules(
+            '        iifname $LAN oifname $WAN tcp dport 53 drop comment "DNS alleen via router"'
+        )
+    # PPPoE heeft een lagere MTU (standaard 1492) dan het LAN (1500).
+    # Zonder MSS-clamping laat de router kleine verzoeken (ping, DNS) door,
+    # maar blijven grote TCP-segmenten met DF-bit hangen: websites laden
+    # niet, ook al heeft de router zelf internet.
+    lines += wan_rules(
         '        oifname $WAN tcp flags syn tcp option maxseg size set rt mtu '
-        'comment "TCP-MSS naar WAN/PPPoE-MTU"',
-        "        iifname $LAN oifname $WAN accept",
-    ]
+        'comment "TCP-MSS naar WAN/PPPoE-MTU"'
+    )
+    lines += wan_rules("        iifname $LAN oifname $WAN accept")
     for rule in fw.forwards:
         src = "" if rule.source.strip().lower() == "any" else f"ip saddr {rule.source} "
-        lines.append(
+        lines += wan_rules(
             f"        iifname $WAN {src}oifname $LAN ip daddr {rule.internal_ip} "
             f"{rule.protocol} dport {rule.internal_port} "
             f'comment "{_comment(rule.name)}"'
@@ -148,7 +160,9 @@ def render_nft(cfg: Config) -> str:
     lines += [
         "    chain postrouting {",
         "        type nat hook postrouting priority srcnat; policy accept;",
-        '        oifname $WAN masquerade comment "NAT naar WAN/PPPoE"',
+    ]
+    lines += wan_rules('        oifname $WAN masquerade comment "NAT naar WAN/PPPoE"')
+    lines += [
         "    }",
         "}",
         "",

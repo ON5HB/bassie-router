@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.51
+Versie: 0.1.52
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -279,14 +279,20 @@ De keuze staat in `config.json` als `interfaces.wan_mode` (`dhcp`, `static` of
 
 ## VLAN van de provider
 
-Via de tab **Provider → Provider VLAN-id**:
+Via de tab **Provider → Stap 2: PPPoE → Provider VLAN-id**:
 
 - Provider geeft bijv. VLAN 6 → vul `6` in. De router maakt `eth0.6` en PPPoE
   loopt daarover. Controle: `ip -d link show eth0.6`.
 - Geeft de provider geen VLAN, of haalt de modem/ONT de tag eraf → veld leeg
   laten (of `0`; dat betekent hetzelfde). De router ruimt dan ook een oude
   subinterface zoals `enp1s0.10` op.
-- Het VLAN geldt **alleen voor WAN**. Het LAN heeft geen VLAN en is IPv4-only.
+- Het VLAN geldt **alleen voor WAN**. De tag wordt op de WAN-subinterface
+  getermineerd; de bridge `switch` staat expliciet met `vlan_filtering 0`, dus
+  er komt geen 802.1Q-tag op LAN terecht. Het LAN is IPv4-only.
+- nftables schrijft WAN-regels twee keer uit: één voor de fysieke NIC en één
+  losse met `oifname "ppp+"`. Een wildcard inside een ifname-set matcht `ppp0`
+  namelijk niet, waardoor NAT en forward voor PPPoE wegvielen terwijl de router
+  zelf wél internet had.
 
 ## DHCP-klanten
 
@@ -453,5 +459,5 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.51.zip`; pak die uit op de
+De complete first-release zip is `bassie-router-v0.1.52.zip`; pak die uit op de
 Debian-router en draai `bash install.sh` als root.

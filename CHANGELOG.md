@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.52 — 2026-11-26
+
+- WAN-regels expliciet voor ppp+, bridge zonder VLAN-filtering en VLAN-id bij PPPoE in de GUI
+
 ## 0.1.51 — 2026-11-26
 
 - TCP-MSS clamping naar de PPPoE-route-MTU, zodat websites vanaf het LAN wél laden

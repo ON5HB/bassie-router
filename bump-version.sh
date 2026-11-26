@@ -55,6 +55,7 @@ PY
 
 # Oude versies bewust laten staan, zodat je kunt terugvallen.
 zip -r -q "bassie-router-v${NEW}.zip" . \
-    -x 'bassie-router-v*.zip' -x '.pytest_cache/*' -x '*/__pycache__/*' -x '*.pyc'
+    -x '.git/*' -x 'bassie-router-v*.zip' \
+    -x '.pytest_cache/*' -x '*/__pycache__/*' -x '*.pyc'
 echo "Versie ${NEW} vastgelegd in VERSION, pyproject.toml, __init__.py, README.md en CHANGELOG.md"
 echo "Zip: bassie-router-v${NEW}.zip"

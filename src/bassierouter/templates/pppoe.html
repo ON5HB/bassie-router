@@ -22,9 +22,8 @@
           {% endif %}
         </select>
       </label>
-      <label>Provider VLAN-id <input name="wan_vlan_id" type="number" min="0" max="4094" value="{{ cfg.interfaces.wan_vlan_id or '' }}" placeholder="leeg of 0 = untagged"></label>
     </div>
-    <p class="hint">De WAN-poort gaat naar een modem in bridge-mode of een Fiber ONT. Het VLAN-id geldt alleen voor WAN; het LAN heeft geen VLAN. Leeg of <code>0</code> betekent geen VLAN; een oude <code>enp1s0.10</code> wordt dan opgeruimd.</p>
+    <p class="hint">De WAN-poort gaat naar een modem in bridge-mode of een Fiber ONT. Het VLAN-id staat bij stap 2 (PPPoE); het LAN heeft geen VLAN.</p>
   </section>
 
   <section class="card">
@@ -51,6 +50,7 @@
     <h2>Stap 2: PPPoE (optioneel)</h2>
     <p><label class="inline"><input type="checkbox" name="client_enabled" id="client_enabled" {{ 'checked' if cfg.pppoe_client.enabled }}> PPPoE inschakelen — <code>ppp0</code> wordt de WAN-interface</label></p>
     <div class="row">
+      <label>Provider VLAN-id <input name="wan_vlan_id" type="number" min="0" max="4094" value="{{ cfg.interfaces.wan_vlan_id or '' }}" placeholder="leeg of 0 = untagged"></label>
       <label>PPPoE-interface (optioneel)
         <select name="client_interface">
           <option value="" {{ 'selected' if not cfg.pppoe_client.interface }}>automatisch ({{ cfg.interfaces.wan_iface }})</option>
@@ -66,7 +66,7 @@
         </select>
       </label>
     </div>
-    <p class="hint">Staat dit uit, dan routeert de router rechtstreeks via de WAN-NIC (DHCP of statisch). Staat dit aan, dan krijgt de NIC eerst zijn adres van stap 1 en pas daarna bouwt PPPoE <code>ppp0</code> op. De modem moet in <strong>bridge-mode</strong> staan, of het is een Fiber ONT dat de PPPoE-gegevens doorgeeft. Met een VLAN-id gebruikt de router <code>{{ cfg.interfaces.wan }}.&lt;vlan-id&gt;</code> voor PPPoE.</p>
+    <p class="hint">Staat dit uit, dan routeert de router rechtstreeks via de WAN-NIC (DHCP of statisch). Staat dit aan, dan krijgt de NIC eerst zijn adres van stap 1 en pas daarna bouwt PPPoE <code>ppp0</code> op. De modem moet in <strong>bridge-mode</strong> staan, of het is een Fiber ONT dat de PPPoE-gegevens doorgeeft. Met een VLAN-id gebruikt PPPoE <code>{{ cfg.interfaces.wan }}.&lt;vlan-id&gt;</code>; leeg of <code>0</code> betekent geen VLAN en ruimt een oude subinterface op. De modem hoeft de tag niet te kennen en het LAN blijft untagged.</p>
     <div class="row">
       <label>Gebruikersnaam <input name="client_username" id="client_username" value="{{ cfg.pppoe_client.username }}"></label>
       <label>Wachtwoord <input name="client_password" type="password" value="{{ cfg.pppoe_client.password }}"></label>
