@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.55 — 2026-11-26
+
+- install.sh herkent git-checkout in /opt/bassie-router en kopieert src niet naar zichzelf
+
 ## 0.1.54 — 2026-11-26
 
 - git als eerste pakket in install.sh, zodat updates via git pull altijd mogelijk zijn

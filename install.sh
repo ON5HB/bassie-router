@@ -57,8 +57,14 @@ if ! python3 -c 'import pam' >/dev/null 2>&1 && ! command -v pamtester >/dev/nul
 fi
 
 echo "== Bestanden installeren =="
-install -d -m 0755 /opt/bassie-router/src
-cp -a "$SRC_DIR/src/." /opt/bassie-router/src/
+if [[ "$SRC_DIR" == "/opt/bassie-router" ]]; then
+    # De git-checkout ís de installatie: 'git pull' vervangt de code direct.
+    # Een self-copy van src/. naar src/ zou 'same file'-fouten geven.
+    echo "Git-checkout gebruikt als installatiedirectory."
+else
+    install -d -m 0755 /opt/bassie-router/src
+    cp -a "$SRC_DIR/src/." /opt/bassie-router/src/
+fi
 install -m 0755 "$SRC_DIR/simulate-routing.sh" /usr/local/sbin/bassie-simulate-routing
 cat > /usr/local/bin/bassie-router <<'CLI'
 #!/bin/sh

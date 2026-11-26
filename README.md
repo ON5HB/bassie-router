@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.54
+Versie: 0.1.55
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -61,16 +61,17 @@ Bestaande waarden blijven zichtbaar als de NIC op dat moment niet aanwezig is.
 ## Installatie (Debian 13, headless, root)
 
 ```sh
-git clone <deze-repo> /opt/bassie-router-src
-bash /opt/bassie-router-src/install.sh
+git clone https://github.com/ON5HB/bassie-router.git /opt/bassie-router
+cd /opt/bassie-router
+bash install.sh
 ```
 
 Het script installeert als eerste `git`, daarna `nftables ppp dnsmasq
 iproute2 isc-dhcp-client curl python3 python3-flask linux-tools-common`
 (voor `cpupower`) en, als
 `python3-pam` ontbreekt, `pamtester`. `git` is nodig voor latere updates.
-De code gaat naar `/opt/bassie-router`,
-maakt
+De checkout is `/opt/bassie-router`; `install.sh` herkent dat en kopieert
+`src/` niet naar zichzelf. Hij maakt
 `/etc/bassie-router/config.json` en start de GUI-service.
 
 Voor PPPoE in de volgende fase is alléén `ppp` nodig: dat levert `pppd` en de
@@ -467,7 +468,7 @@ Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.p
 Updates gaan zonder zip. Op de router:
 
 ```sh
-cd /opt/bassie-router-src
+cd /opt/bassie-router
 git pull
 bash install.sh
 ```
