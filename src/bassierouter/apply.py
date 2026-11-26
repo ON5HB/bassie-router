@@ -550,17 +550,22 @@ def service_status(
 
     pppoe_needed = cfg.interfaces.wan_mode == "pppoe" and cfg.pppoe_client.enabled
     entries = (
-        ("Firewall", active("nftables.service"), True),
-        ("DHCP server", dhcp_ok, cfg.interfaces.dhcp_enabled),
-        ("DNS server", dns_ok, True),
-        ("LAN-adres ophalen", active("bassie-lan-dhcp.service"), not cfg.interfaces.dhcp_enabled),
-        ("CPU snelheid", active("bassie-cpu.service"), True),
-        ("Routering", active("bassie-router.service"), True),
-        ("PPPoE klant", active("bassie-pppoe-client.service"), pppoe_needed),
+        ("Firewall", active("nftables.service"), True, "niet nodig"),
+        ("DHCP server", dhcp_ok, cfg.interfaces.dhcp_enabled, "niet nodig"),
+        ("DNS server", dns_ok, True, "niet nodig"),
+        ("DHCP client", active("bassie-lan-dhcp.service"), not cfg.interfaces.dhcp_enabled, "niet nodig"),
+        ("CPU snelheid", active("bassie-cpu.service"), True, "niet nodig"),
+        ("Routering", active("bassie-router.service"), True, "niet nodig"),
+        ("PPPoE klant", active("bassie-pppoe-client.service"), pppoe_needed, "uitgeschakeld"),
     )
     return [
-        {"name": name, "active": "active" if ok else "inactive", "needed": needed}
-        for name, ok, needed in entries
+        {
+            "name": name,
+            "active": "active" if ok else "inactive",
+            "needed": needed,
+            "off_text": off_text,
+        }
+        for name, ok, needed, off_text in entries
     ]
 
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.60 — 2026-11-26
+
+- Netwerkpagina opgeschoond: korte teksten en duidelijkere labels
+
 ## 0.1.59 — 2026-11-26
 
 - Status: vriendelijke servicenamen, functionele DNS/DHCP-checks en fabrieksreset uit lijst

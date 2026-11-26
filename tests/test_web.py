@@ -77,8 +77,7 @@ def test_dashboard_and_pages_load(tmp_path):
     for path in ("/network", "/pppoe"):
         page = client.get(path).data
         assert b"Zyxel" not in page, path
-        assert b"ONT" in page, path
-    assert b"bridge-mode" in client.get("/network").data
+    assert b"ONT" in client.get("/pppoe").data
     network_page = client.get("/network").data
     assert b'name="wan"' not in network_page
     assert b'name="wan_nic_mode"' not in network_page
@@ -442,8 +441,9 @@ def test_dashboard_marks_unused_services(tmp_path):
     save_config(cfg, cfg_file)
     client, _ = make_client(tmp_path)
     body = client.get("/").data
-    assert b">LAN-adres ophalen</td>" in body
+    assert b">DHCP client</td>" in body
     assert b"niet nodig" in body
+    assert b">uitgeschakeld</td>" in body
 
 
 def test_firewall_warns_when_dns_state_differs(tmp_path):

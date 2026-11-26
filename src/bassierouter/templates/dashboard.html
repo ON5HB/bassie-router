@@ -48,7 +48,7 @@
     <h2>Services</h2>
     <table>
       {% for service in state.services %}
-        <tr><td>{{ service.name }}</td><td class="{{ 'muted' if not service.needed else ('ok-text' if service.active == 'active' else 'hot-text') }}">{{ 'niet nodig' if not service.needed else ('Actief' if service.active == 'active' else 'Uit') }}</td></tr>
+        <tr><td>{{ service.name }}</td><td class="{{ 'muted' if not service.needed else ('ok-text' if service.active == 'active' else 'hot-text') }}">{{ service.off_text if not service.needed else ('Actief' if service.active == 'active' else 'Uit') }}</td></tr>
       {% endfor %}
     </table>
   </section>

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Netwerk{% endblock %}
 {% block content %}
-<h1>Netwerk (IPv4)</h1>
-<p>Alle fysieke poorten zijn in één bridge en gedragen zich als een switch. De WAN-poort en de provider-gegevens staan bij <strong>Provider</strong>; alle overige poorten blijven hier LAN. De WAN-poort gaat naar een modem in bridge-mode of naar een Fiber ONT — welk merk dan ook.</p>
+<h1>Netwerk</h1>
+<p>Alle poorten, behalve die voor WAN gebruikt is, worden ingezet als switch. Dus alle geselecteerde poorten werken in hetzelfde netwerk.</p>
+<p>De Bassie-router ondersteunt alleen IPv4. Misschien bouwen we IPv6 ooit nog in; tot nu toe niet.</p>
 {% if not cfg.bootstrapped %}
 <div class="card">
   <h2>Initiele setup</h2>
@@ -18,11 +19,11 @@
     <div class="row">
       <label>Hostname <input name="hostname" value="{{ cfg.hostname }}" required></label>
     </div>
-    <p class="hint">Wordt na Toepassen nu in <code>/etc/hostname</code> en <code>/etc/hosts</code> gezet. Het SSH-welkomstbericht toont ook de GUI-locatie.</p>
+    <p class="hint">De hostnaam zoals de router zich meldt in het netwerk.</p>
   </section>
 
   <section class="card">
-    <h2>LAN-bridge</h2>
+    <h2>LAN-poorten</h2>
     <div class="row">
       <label>LAN-poorten (meerdere kiezen met Ctrl)
         <select name="lan_ports" id="lan_ports" multiple size="6" required>
@@ -34,9 +35,8 @@
           {% endfor %}
         </select>
       </label>
-      <label>Bridgenaam <input name="lan_bridge" value="{{ cfg.interfaces.lan_bridge }}" required></label>
+      <label>Naam van de gezamenlijke poorten (bijv. switch) <input name="lan_bridge" value="{{ cfg.interfaces.lan_bridge }}" required></label>
     </div>
-    <p class="hint">Bijvoorbeeld <code>br0</code> of <code>switch</code>. Alle scripts gebruiken dezelfde naam. De gekozen LAN-poorten gedragen zich als één switch.</p>
     <div class="row">
       <label>LAN-IP <input name="lan_ip" value="{{ cfg.interfaces.lan_ip }}" required></label>
       <label>Prefix <input name="lan_prefix" type="number" min="1" max="32" value="{{ cfg.interfaces.lan_prefix }}" required></label>
@@ -45,7 +45,7 @@
   </section>
 
   <section class="card">
-    <h2>DHCP &amp; DNS (dnsmasq)</h2>
+    <h2>LAN DHCP en DNS servers</h2>
     <p><label class="inline"><input type="checkbox" name="dhcp_enabled" {{ 'checked' if cfg.interfaces.dhcp_enabled }}> DHCP-server aan</label></p>
     <p class="hint">Standaard uit. Zet dit aan zodra de router het LAN zelf van adressen moet voorzien; anders blijft de router DHCP-klant op een bestaand netwerk en krijgen LAN-clients geen adres van deze router.</p>
     <div class="row">
@@ -59,9 +59,9 @@
     </div>
   </section>
   <section class="card">
-    <h2>GUI-bereik</h2>
+    <h2>Administratie scherm (dit dus)</h2>
     <div class="row">
-      <label>Luister op
+      <label>Te bereiken via
         <select name="gui_bind">
           <option value="127.0.0.1" {{ 'selected' if cfg.gui.bind == '127.0.0.1' }}>Alleen lokaal (127.0.0.1)</option>
           <option value="{{ cfg.interfaces.lan_ip }}" {{ 'selected' if cfg.gui.bind != '127.0.0.1' }}>LAN ({{ cfg.interfaces.lan_ip }})</option>
@@ -72,7 +72,7 @@
       </label>
       <label>Poort <input name="gui_port" type="number" min="1" max="65535" value="{{ cfg.gui.port }}"></label>
     </div>
-    <p class="hint">De GUI luistert nooit op WAN.{% if cfg.interfaces.dhcp_enabled %} Met DHCP-server aan verhuist hij na Toepassen nu naar het ingestelde LAN-IP <code>{{ cfg.interfaces.lan_ip }}</code>.{% else %} Met DHCP-server uit blijft hij luisteren op het adres van de externe DHCP-server (<code>{{ cfg.gui.bind }}</code>).{% endif %} Aanmelden met <code>root</code> + je SSH-wachtwoord; de sessie is 30 minuten geldig.</p>
+    <p class="hint">Je kan het Administratie scherm nooit bereiken vanuit Internet. {% if cfg.interfaces.dhcp_enabled %}Na Toepassen nu staat het op <code>{{ cfg.interfaces.lan_ip }}:{{ cfg.gui.port }}</code>.{% else %}Het luistert nu op <code>{{ cfg.gui.bind }}:{{ cfg.gui.port }}</code>.{% endif %} Aanmelden met <code>root</code> en je SSH-wachtwoord; de sessie duurt 30 minuten.</p>
   </section>
   <div class="actions" data-form-actions hidden>
     <button type="submit" class="primary">Wijzigingen Opslaan</button>
