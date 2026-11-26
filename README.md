@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.48
+Versie: 0.1.49
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -446,5 +446,5 @@ PYTHONPATH=src /tmp/opencode/routerctl-venv/bin/python -m pytest -q
 
 Demobeelden staan in `screenshots/`: `dashboard.png`, `network.png`, `provider.png`, `firewall.png`, `apply.png` (met de waarschuwing voor de eerste keer en de gele melding voor openstaande wijzigingen).
 
-De complete first-release zip is `bassie-router-v0.1.48.zip`; pak die uit op de
+De complete first-release zip is `bassie-router-v0.1.49.zip`; pak die uit op de
 Debian-router en draai `bash install.sh` als root.

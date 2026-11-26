@@ -16,6 +16,7 @@ from bassierouter.services import (
     render_links_script,
     render_motd,
     render_motd_ip_script,
+    render_client_options,
     render_pppoe_check_script,
     render_sysctl,
     render_systemd_units,
@@ -279,6 +280,16 @@ def test_lan_dhcp_client_keeps_retrying():
     assert "After=network-online.target bassie-links.service bassie-lan-dhcp.service" in gui
     result = subprocess.run(["sh", "-n"], input=text, text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_pppoe_options_use_nic_prefix_for_vlan_interface():
+    cfg = Config()
+    cfg.interfaces.wan = "enp1s0"
+    cfg.interfaces.wan_vlan_id = 10
+    text = render_client_options(cfg)
+    assert "plugin rp-pppoe.so" in text
+    assert "nic-enp1s0.10" in text
+    assert "\nenp1s0.10\n" not in text
 
 
 def test_pppoe_check_pings_modem_before_starting_pppd():

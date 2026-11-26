@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.49 — 2026-11-26
+
+- PPPoE-interface voortaan met nic- prefix, zodat pppd een VLAN-subinterface accepteert
+
 ## 0.1.48 — 2026-11-26
 
 - PPPoE-start blokkeert niet meer op een onbereikbare modem-ping; groene melding donkergroen met witte tekst

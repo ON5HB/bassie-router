@@ -359,7 +359,9 @@ def render_client_options(cfg: Config) -> str:
         "lcp-echo-failure 4",
         f"mtu {c.mtu}",
         "plugin rp-pppoe.so",
-        c.iface(cfg),
+        # pppd verwacht de ethernet-interface als 'nic-<naam>' (ook bij
+        # VLAN-subinterfaces); een kale 'enp1s0.10' wordt als optie gezien.
+        f"nic-{c.iface(cfg)}",
         f'user "{_q(c.username)}"',
     ]
     if c.service_name:
