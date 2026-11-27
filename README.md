@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.60
+Versie: 0.1.61
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -32,7 +32,8 @@ die niet ophoudt tot het goed werkt. Gebruik het, verbeter het, deel het.
 - **nftables** (alleen `table ip`): WAN → LAN standaard dicht, LAN → WAN open via NAT/masquerade, portforwards per tcp/udp.
 - **dnsmasq** voor DHCP + DNS op het LAN (IPv4-only).
 - **Bridge** voor alle LAN-NIC's: ze gedragen zich als één switch.
-- **Flask GUI** met status, netwerk, Provider (PPPoE), firewall en toepassen/rollback.
+- **Flask GUI** met status, netwerk, Provider (PPPoE), firewall, DHCP, Wifi en toepassen/rollback.
+- **Wifi-accesspoints** via hostapd: maximaal twee radio's, eigen band/kanaal per radio, gedeelde SSID en wachtwoord, op de LAN-bridge.
 - **Hostname** (`bassie-router`) instelbaar in **Netwerk** en mee in opslaan/rollback.
 - **SSH-welkomstbericht** (`/etc/motd`) met credits en de actuele GUI-locatie.
 - Alles draait **als root**, geen sudo. Backups vóór elke wijziging.
@@ -330,9 +331,9 @@ zien: MAC-adres, IP-adres, naam en wanneer de lease is gezien.
   `nslookup workstation 192.168.1.1` moet falen (met de schakelaar aan).
 - Opslaan herstart de GUI niet meer; alleen als het bindadres of de GUI-poort
   verandert, volgt een uitgestelde herstart.
-- Op **Status** staat een kaart **Configuratie-controle**: die vergelijkt de
-  opgeslagen stand met wat er echt actief is (DNS via router, DHCP-server en
-  PPPoE). Bij **WIJKT AF** staat op **Firewall** ook een waarschuwing.
+- Op **Status → Services** zie je per dienst of hij actief is en of hij nodig
+  is: Firewall, DHCP server, DNS server, DHCP client, CPU snelheid, Routering,
+  PPPoE klant en Wifi accesspoint.
 - nftables wordt na elke toepassing expliciet herladen met
   `nft -f /etc/nftables.conf`; `enable --now` herlaadt een draaiende service
   niet. Daardoor kunnen config en actieve regels niet uit sync raken.
@@ -350,6 +351,23 @@ zien: MAC-adres, IP-adres, naam en wanneer de lease is gezien.
 
 Op **Status** staat expliciet: **DHCP-server op LAN — AAN — Dnsmasq geeft
 adressen uit op de poort switch**, met een knop naar de DHCP-klanten.
+
+## Wifi
+
+De tab **Wifi** zet maximaal twee accesspoints op. Hij staat **standaard uit**;
+alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
+
+- Eén **netwerknaam (SSID)** en **wachtwoord** voor alle radio's, zodat clients
+  zelf de beste band kiezen (dualband).
+- Per radio kies je apart **2,4 GHz** of **5 GHz** en een kanaal. Kanaal `0` is
+  automatisch; de standaard is `11` voor 2,4 GHz en `36` voor 5 GHz.
+- De NIC's komen op de bridge `switch`: wifi-clients krijgen IP, DNS en DHCP
+  uit hetzelfde LAN als de bekabelde poorten. Er komen geen extra firewall-
+  regels bij.
+- `iw` toont welke banden een radio ondersteunt; zonder `iw` blijft die info
+  leeg, maar de AP's starten wel.
+- Opslaan schrijft `/etc/hostapd/bassie-router-1.conf` (en `-2.conf`) en start
+  `bassie-wifi-1.service` / `bassie-wifi-2.service`. Uitzetten stopt ze weer.
 
 ## Portforwards
 

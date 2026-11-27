@@ -29,7 +29,15 @@
     "service_name": "",
     "usepeerdns": true,
     "mtu": 1492,
-    "demand": false
+    "demand": false,
+    "idle_seconds": 300
+  },
+  "wifi": {
+    "enabled": false,
+    "ssid": "",
+    "password": "",
+    "country": "BE",
+    "aps": []
   },
   "firewall": {
     "wan_input_policy": "drop",

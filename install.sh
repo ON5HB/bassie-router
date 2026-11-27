@@ -23,6 +23,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     nftables \
     ppp \
     dnsmasq \
+    hostapd \
+    iw \
     iproute2 \
     isc-dhcp-client \
     iputils-ping \

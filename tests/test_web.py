@@ -64,7 +64,7 @@ def make_client(tmp_path):
 
 def test_dashboard_and_pages_load(tmp_path):
     client, _ = make_client(tmp_path)
-    for path in ("/", "/network", "/pppoe", "/firewall", "/system", "/apply"):
+    for path in ("/", "/network", "/pppoe", "/wifi", "/firewall", "/system", "/apply"):
         assert client.get(path).status_code == 200, path
     body = client.get("/").data
     assert b">Provider</a>" in body
@@ -547,6 +547,59 @@ def test_gui_pppoe_form_sets_idle_timeout(tmp_path):
     cfg = load_config(cfg_file)
     assert cfg.pppoe_client.demand is True
     assert cfg.pppoe_client.idle_seconds == 120
+
+
+def test_gui_wifi_form_saves_two_accesspoints(tmp_path):
+    client, cfg_file = make_client(tmp_path)
+    response = client.post("/wifi", data={
+        "csrf_token": "testtoken",
+        "wifi_enabled": "on",
+        "wifi_ssid": "Bassie",
+        "wifi_password": "wachtwoord123",
+        "wifi_country": "be",
+        "wifi_iface_0": "wlx98254a16b8da",
+        "wifi_band_0": "2.4",
+        "wifi_channel_0": "0",
+        "wifi_iface_1": "wlx98254a16c878",
+        "wifi_band_1": "5",
+        "wifi_channel_1": "36",
+    })
+    assert response.status_code == 302
+    cfg = load_config(cfg_file)
+    assert cfg.wifi.enabled is True
+    assert cfg.wifi.ssid == "Bassie"
+    assert cfg.wifi.country == "BE"
+    assert len(cfg.wifi.aps) == 2
+    assert cfg.wifi.aps[0].interface == "wlx98254a16b8da"
+    assert cfg.wifi.aps[1].band == "5"
+    assert cfg.wifi.aps[1].channel == 36
+
+
+def test_gui_wifi_page_uses_one_shared_network_name(tmp_path):
+    client, _ = make_client(tmp_path)
+    page = client.get("/wifi").data
+    assert b">Wifi</a>" in page
+    assert b'name="wifi_enabled"' in page
+    assert b'name="wifi_ssid"' in page
+    assert b'name="wifi_band_0"' not in page  # geen radio's in de testomgeving
+    assert b'switch-bridge' in page
+
+
+def test_gui_pppoe_form_allows_zero_idle_seconds(tmp_path):
+    client, cfg_file = make_client(tmp_path)
+    response = client.post("/pppoe", data={
+        "csrf_token": "testtoken",
+        "client_enabled": "on",
+        "client_username": "provider-user",
+        "client_password": "secret",
+        "client_mtu": "1492",
+        "client_demand": "on",
+        "client_idle_seconds": "0",
+    })
+    assert response.status_code == 302
+    cfg = load_config(cfg_file)
+    assert cfg.pppoe_client.demand is True
+    assert cfg.pppoe_client.idle_seconds == 0
 
 
 def test_gui_pppoe_off_keeps_vlan_value_but_not_active(tmp_path):

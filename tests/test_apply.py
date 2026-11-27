@@ -11,7 +11,7 @@ from bassierouter.apply import (
     rollback,
     service_status,
 )
-from bassierouter.config import Config, PortForward, load_config, save_config
+from bassierouter.config import Config, PortForward, WifiAp, load_config, save_config
 from bassierouter.runner import CommandResult, FakeRunner
 
 
@@ -59,6 +59,37 @@ def test_dry_run_does_not_write(tmp_path):
     assert report.checks == ["nftables-syntax OK", "dry-run: niets gewijzigd"]
     assert any(call[0][0] == "nft" for call in runner.calls)
     assert not (tmp_path / "etc").exists()
+
+
+def test_wifi_services_follow_enabled_flag():
+    cfg = Config()
+    for index in (1, 2):
+        assert [
+            "systemctl", "disable", "--now", f"bassie-wifi-{index}.service"
+        ] in build_commands(cfg)
+    cfg.wifi.enabled = True
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    cfg.wifi.aps = [
+        WifiAp(interface="wlx98254a16b8da", band="2.4"),
+        WifiAp(interface="wlx98254a16c878", band="5", channel=36),
+    ]
+    commands = build_commands(cfg)
+    for index in (1, 2):
+        unit = f"bassie-wifi-{index}.service"
+        assert ["systemctl", "enable", "--now", unit] in commands
+        assert ["systemctl", "restart", unit] in commands
+    files = build_files(cfg)
+    assert "ssid=Bassie" in files["/etc/hostapd/bassie-router-1.conf"]
+    assert "channel=36" in files["/etc/hostapd/bassie-router-2.conf"]
+    assert "/etc/systemd/system/bassie-wifi-2.service" in files
+    services = {s["name"]: s for s in service_status(cfg, FakeRunner())}
+    assert services["Wifi accesspoint"]["needed"] is True
+
+
+def test_wifi_service_not_needed_when_off():
+    services = {s["name"]: s for s in service_status(Config(), FakeRunner())}
+    assert services["Wifi accesspoint"]["needed"] is False
 
 
 def test_pppoe_service_only_enabled_in_pppoe_mode():

@@ -142,6 +142,28 @@ def render_links_script(cfg: Config) -> str:
     active_wan = cfg.active_wan_iface
     ports = " ".join(shlex.quote(p) for p in i.lan_ports)
     bootstrap = "0" if cfg.bootstrapped else "1"
+    wifi_block = ""
+    if cfg.wifi.enabled:
+        # De AP's horen bij hetzelfde untagged switch-netwerk als de LAN-poorten.
+        for iface, _band, _channel in wifi_plan(cfg):
+            wifi_block += f"""
+# WiFi-AP op de LAN-bridge (zelfde DHCP/DNS als bekabeld).
+if exists "{iface}"; then
+    $IP addr flush dev "{iface}" 2>/dev/null || true
+    $IP -6 addr flush dev "{iface}" 2>/dev/null || true
+    $IP link set dev "{iface}" master "$BR" 2>/dev/null || true
+    $IP link set dev "{iface}" up 2>/dev/null || true
+fi
+"""
+    else:
+        for iface in detect_wireless_interfaces():
+            wifi_block += f"""
+# WiFi staat uit: NIC losmaken van de bridge en down laten.
+if exists "{iface}"; then
+    $IP link set dev "{iface}" nomaster 2>/dev/null || true
+    $IP link set dev "{iface}" down 2>/dev/null || true
+fi
+"""
     vlan_block = ""
     vlan_cleanup = ""
     if i.wan:
@@ -341,7 +363,7 @@ for port in $PORTS; do
         $IP link set dev "$port" up 2>/dev/null || true
     fi
 done
-{detach_block}{vlan_cleanup}{vlan_block}
+{detach_block}{wifi_block}{vlan_cleanup}{vlan_block}
 if exists "$WAN"; then
     $IP link set dev "$WAN" up 2>/dev/null || true
     if [ "$BOOTSTRAP" = "0" ]; then
@@ -380,7 +402,7 @@ def render_client_options(cfg: Config) -> str:
         lines.append(f'rp-pppoe-service "{_q(c.service_name)}"')
     if c.usepeerdns:
         lines.append("usepeerdns")
-    if c.demand:
+    if c.demand and c.idle_seconds > 0:
         lines.append("demand")
         lines.append(f"idle {c.idle_seconds}")
     lines.append("")
@@ -481,6 +503,8 @@ echo "Bassie-Router: factory reset bij boot (standaardwaarden)."
 rm -f /etc/bassie-router/config.json \\
     /var/lib/bassie-router/applied-config.json \\
     /etc/dnsmasq.d/bassie-router.conf \\
+    /etc/hostapd/bassie-router-1.conf \
+    /etc/hostapd/bassie-router-2.conf \
     /etc/nftables.conf \\
     /etc/sysctl.d/99-bassie-router.conf \\
     /etc/ppp/peers/bassie-isp \\
@@ -630,8 +654,120 @@ exit 0
 """
 
 
+def detect_wireless_interfaces() -> list[str]:
+    """Alle draadloze NIC's (alleen aanwijzen, nooit automatisch inschakelen)."""
+    try:
+        return sorted(
+            path.name for path in Path("/sys/class/net").iterdir()
+            if path.is_dir() and (path / "wireless").is_dir()
+        )
+    except OSError:
+        return []
+
+
+MAX_WIFI_APS = 2
+
+
+def wifi_rows(cfg: Config) -> list[dict[str, object]]:
+    """Rijen voor de GUI: één per gevonden radio, met eigen band en kanaal."""
+    radios = detect_wireless_interfaces()
+    rows: list[dict[str, object]] = []
+    for index, iface in enumerate(radios[:MAX_WIFI_APS]):
+        ap = cfg.wifi.aps[index] if index < len(cfg.wifi.aps) else None
+        rows.append({
+            "index": index,
+            "interface": iface,
+            "band": ap.band if ap else ("2.4" if index == 0 else "5"),
+            "channel": ap.channel if ap else (11 if index == 0 else 36),
+            "bands": wifi_bands(iface),
+        })
+    return rows
+
+
+def wifi_plan(cfg: Config) -> list[tuple[str, str, int]]:
+    """Actieve AP's: opgeslagen keuzes, of automatisch bij een lege config."""
+    if cfg.wifi.aps:
+        return [
+            (ap.interface, ap.band, ap.channel)
+            for ap in cfg.wifi.aps[:MAX_WIFI_APS]
+            if ap.interface
+        ]
+    radios = detect_wireless_interfaces()[:MAX_WIFI_APS]
+    return [
+        (iface, "2.4" if index == 0 else "5", 11 if index == 0 else 36)
+        for index, iface in enumerate(radios)
+    ]
+
+
+def bands_from_iw_output(text: str) -> list[str]:
+    """Banden uit `iw phy ... info` (ook met '2412.0 MHz')."""
+    bands: set[str] = set()
+    for match in re.finditer(r"\*\s+(\d{4})(?:\.\d+)?\s+MHz", text):
+        mhz = int(match.group(1))
+        if 2400 <= mhz < 2500:
+            bands.add("2.4")
+        elif 4900 <= mhz < 5900:
+            bands.add("5")
+        elif 5900 <= mhz < 7100:
+            bands.add("6")
+    return [band for band in ("2.4", "5", "6") if band in bands]
+
+
+def wifi_bands(interface: str) -> list[str]:
+    """Banden die de NIC volgens `iw` ondersteunt (informatief)."""
+    if not interface:
+        return []
+    try:
+        phy = (
+            Path("/sys/class/net") / interface / "phy80211" / "name"
+        ).read_text(encoding="utf-8").strip()
+    except OSError:
+        return []
+    if not phy:
+        return []
+    iw = next(
+        (path for path in ("/usr/sbin/iw", "/usr/bin/iw") if Path(path).exists()), ""
+    )
+    if not iw:
+        return []
+    try:
+        result = subprocess.run(
+            [iw, "phy", phy, "info"], capture_output=True, text=True, timeout=5, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return bands_from_iw_output(result.stdout)
+
+
+def render_hostapd_conf(
+    cfg: Config, interface: str, band: str, channel: int
+) -> str:
+    """hostapd-configuratie: accesspoint op de LAN-bridge."""
+    wifi = cfg.wifi
+    lines = [
+        "# Gegenereerd door Bassie-Router - WiFi accesspoint (IPv4-LAN)",
+        f"interface={shlex.quote(interface)}",
+        "driver=nl80211",
+        f"bridge={cfg.interfaces.lan_bridge}",
+        f"ssid={wifi.ssid.strip()}",
+        f"country_code={wifi.country}",
+        "hw_mode=g" if band == "2.4" else "hw_mode=a",
+        "ieee80211n=1",
+        "ieee80211ac=1" if band == "5" else "",
+        "wmm_enabled=1",
+        "auth_algs=1",
+        "wpa=2",
+        "wpa_key_mgmt=WPA-PSK",
+        "rsn_pairwise=CCMP",
+        f"wpa_passphrase={wifi.password}",
+    ]
+    if channel:
+        lines.insert(7, f"channel={channel}")
+    return "\n".join(line for line in lines if line) + "\n"
+
+
 def render_systemd_units(cfg: Config) -> dict[str, str]:
-    return {
+    units = {
         "/etc/systemd/system/bassie-links.service": (
             "[Unit]\n"
             "Description=Bassie-Router netwerklinks (bridge, WAN-VLAN, LAN-IP)\n"
@@ -727,3 +863,20 @@ def render_systemd_units(cfg: Config) -> dict[str, str]:
             "WantedBy=multi-user.target\n"
         ),
     }
+    for index in range(1, MAX_WIFI_APS + 1):
+        units[f"/etc/systemd/system/bassie-wifi-{index}.service"] = (
+            "[Unit]\n"
+            f"Description=Bassie-Router WiFi accesspoint {index}\n"
+            "After=bassie-links.service\n"
+            "Requires=bassie-links.service\n"
+            "\n"
+            "[Service]\n"
+            "Type=simple\n"
+            f"ExecStart=/usr/sbin/hostapd /etc/hostapd/bassie-router-{index}.conf\n"
+            "Restart=on-failure\n"
+            "RestartSec=5\n"
+            "\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n"
+        )
+    return units

@@ -130,11 +130,33 @@ class PPPoEClient:
     usepeerdns: bool = True
     mtu: int = 1492
     demand: bool = False
+    """Alleen verbinden als er verkeer is."""
     idle_seconds: int = 300
-    """Op aanvraag: verbreken na zoveel seconden zonder verkeer (5 minuten)."""
+    """Verbreken na zoveel seconden zonder verkeer."""
 
     def iface(self, cfg: "Config") -> str:
         return self.interface or cfg.active_wan_iface
+
+
+@dataclass
+class WifiAp:
+    interface: str = ""
+    """Draadloze NIC voor dit accesspoint."""
+    band: str = "2.4"
+    """'2.4' of '5' (GHz)."""
+    channel: int = 0
+    """0 = automatisch kanaal."""
+
+
+@dataclass
+class Wifi:
+    enabled: bool = False
+    """Standaard uit: niet iedere router heeft een draadloze NIC."""
+    ssid: str = ""
+    password: str = ""
+    country: str = "BE"
+    aps: list[WifiAp] = field(default_factory=list)
+    """Eén accesspoint per radio; SSID en wachtwoord zijn gedeeld."""
 
 
 @dataclass
@@ -194,6 +216,7 @@ class Config:
     """Hostname van de router; wordt bij Toepassen in /etc/hostname gezet."""
     interfaces: Interfaces = field(default_factory=Interfaces)
     pppoe_client: PPPoEClient = field(default_factory=PPPoEClient)
+    wifi: Wifi = field(default_factory=Wifi)
     firewall: Firewall = field(default_factory=Firewall)
     gui: GUI = field(default_factory=GUI)
     system: System = field(default_factory=System)
@@ -491,8 +514,26 @@ def validate(cfg: Config) -> list[str]:
             errors.append("PPPoE-client: ongeldige interface")
         if not 576 <= c.mtu <= 1500:
             errors.append("PPPoE-client: MTU moet tussen 576 en 1500 liggen")
-        if not 1 <= c.idle_seconds <= 86400:
-            errors.append("PPPoE-client: idle-tijd moet tussen 1 en 86400 seconden liggen")
+        if not 0 <= c.idle_seconds <= 86400:
+            errors.append("PPPoE-client: idle-tijd moet tussen 0 en 86400 seconden liggen")
+
+    w = cfg.wifi
+    if w.enabled:
+        if not 1 <= len(w.ssid.strip()) <= 32:
+            errors.append("wifi: SSID moet tussen 1 en 32 tekens zijn")
+        if not 8 <= len(w.password) <= 63 or "\n" in w.password:
+            errors.append("wifi: wachtwoord moet tussen 8 en 63 tekens zijn")
+        if not re.fullmatch(r"[A-Z]{2}", w.country):
+            errors.append("wifi: landcode moet twee hoofdletters zijn")
+        for ap in w.aps:
+            if ap.interface and not IFACE_RE.match(ap.interface):
+                errors.append("wifi: ongeldige interface")
+            if ap.band not in ("2.4", "5"):
+                errors.append("wifi: band moet 2.4 of 5 GHz zijn")
+            if ap.band == "2.4" and ap.channel not in range(0, 14):
+                errors.append("wifi: kanaal voor 2,4 GHz moet 0 of 1 t/m 13 zijn")
+            if ap.band == "5" and ap.channel and ap.channel not in range(36, 197):
+                errors.append("wifi: kanaal voor 5 GHz moet 0 of 36 t/m 196 zijn")
 
     fw = cfg.firewall
     if fw.wan_input_policy not in ("drop", "accept"):

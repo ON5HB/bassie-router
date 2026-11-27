@@ -25,6 +25,8 @@ UNITS = (
     "bassie-cpu.service",
     "bassie-router.service",
     "bassie-pppoe-client.service",
+    "bassie-wifi-1.service",
+    "bassie-wifi-2.service",
 )
 EXECUTABLES = {
     "/usr/local/sbin/bassie-setup-links",
@@ -73,6 +75,18 @@ def build_files(cfg: Config, *, root: str = "/") -> dict[str, str]:
         "/etc/update-motd.d/40-bassie-router-ip": services.render_motd_ip_script(cfg),
         "/etc/nftables.conf": render_nft(cfg),
         "/etc/dnsmasq.d/bassie-router.conf": services.render_dnsmasq(cfg),
+    }
+    wifi_plan = services.wifi_plan(cfg)
+    for index in range(1, services.MAX_WIFI_APS + 1):
+        iface, band, channel = (
+            wifi_plan[index - 1]
+            if index <= len(wifi_plan)
+            else ("", "2.4", 0)
+        )
+        files[f"/etc/hostapd/bassie-router-{index}.conf"] = (
+            services.render_hostapd_conf(cfg, iface, band, channel)
+        )
+    files.update({
         "/etc/systemd/system/dnsmasq.service.d/10-bassie.conf": (
             "[Unit]\n"
             "Wants=bassie-links.service\n"
@@ -88,7 +102,7 @@ def build_files(cfg: Config, *, root: str = "/") -> dict[str, str]:
         "/etc/ppp/chap-secrets": services.merge_managed_file(
             existing_secrets, services.render_secrets_block(cfg)
         ),
-    }
+    })
     files.update(services.render_systemd_units(cfg))
     return files
 
@@ -98,6 +112,12 @@ def build_commands(cfg: Config) -> list[list[str]]:
         ["sysctl", "-e", "-p", "/etc/sysctl.d/99-bassie-router.conf"],
         ["hostname", "-F", "/etc/hostname"],
         ["systemctl", "daemon-reload"],
+        # Debian's eigen hostapd.service mag niet naast onze AP gaan draaien.
+        [
+            "sh",
+            "-c",
+            "systemctl disable --now hostapd.service >/dev/null 2>&1 || true",
+        ],
         [
             "sh",
             "-c",
@@ -129,6 +149,16 @@ def build_commands(cfg: Config) -> list[list[str]]:
         # Ook hier herlaadt 'enable --now' geen al draaiende pppd: nieuwe
         # VLAN-interface of credentials moeten wél in de volgende sessie.
         commands.append(["systemctl", "restart", "bassie-pppoe-client.service"])
+    plan = services.wifi_plan(cfg) if cfg.wifi.enabled else []
+    for index in range(1, services.MAX_WIFI_APS + 1):
+        unit = f"bassie-wifi-{index}.service"
+        needed = index <= len(plan)
+        commands.append([
+            "systemctl", "enable" if needed else "disable", "--now", unit
+        ])
+        if needed:
+            # 'enable --now' herlaadt geen al draaiende hostapd.
+            commands.append(["systemctl", "restart", unit])
     # Geen restart van de GUI hier: dat doodt het lopende verzoek vóór de
     # 'actief'-snapshot is geschreven. Alleen bij een gewijzigd bindadres/poort
     # wordt hieronder uitgesteld herstart.
@@ -356,8 +386,11 @@ def apply_config(
         for relative, content in files.items():
             if relative in EXECUTABLES:
                 mode = 0o755
-            elif relative in ("/etc/ppp/chap-secrets", "/etc/bassie-router/config.json"):
-                # Beide bevatten het PPPoE-wachtwoord: nooit wereldleesbaar.
+            elif (
+                relative in ("/etc/ppp/chap-secrets", "/etc/bassie-router/config.json")
+                or relative.startswith("/etc/hostapd/")
+            ):
+                # Bevat PPPoE- of WiFi-wachtwoord: nooit wereldleesbaar.
                 mode = 0o600
             else:
                 mode = 0o644
@@ -549,6 +582,15 @@ def service_status(
         dhcp_ok = "dhcp-range=" in conf and not active("bassie-lan-dhcp.service")
 
     pppoe_needed = cfg.interfaces.wan_mode == "pppoe" and cfg.pppoe_client.enabled
+    wifi_plan = services.wifi_plan(cfg) if cfg.wifi.enabled else []
+    wifi_ok = (
+        all(active(f"bassie-wifi-{i}.service") for i in range(1, len(wifi_plan) + 1))
+        if wifi_plan
+        else not any(
+            active(f"bassie-wifi-{i}.service")
+            for i in range(1, services.MAX_WIFI_APS + 1)
+        )
+    )
     entries = (
         ("Firewall", active("nftables.service"), True, "niet nodig"),
         ("DHCP server", dhcp_ok, cfg.interfaces.dhcp_enabled, "niet nodig"),
@@ -557,6 +599,7 @@ def service_status(
         ("CPU snelheid", active("bassie-cpu.service"), True, "niet nodig"),
         ("Routering", active("bassie-router.service"), True, "niet nodig"),
         ("PPPoE klant", active("bassie-pppoe-client.service"), pppoe_needed, "uitgeschakeld"),
+        ("Wifi accesspoint", wifi_ok, bool(wifi_plan), "uitgeschakeld"),
     )
     return [
         {

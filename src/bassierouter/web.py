@@ -31,6 +31,8 @@ try:
 except ImportError:  # python3-pam nog niet geïnstalleerd (bijv. in tests)
     pam = None  # type: ignore[assignment]
 
+from .services import MAX_WIFI_APS, wifi_rows
+
 from .apply import (
     ApplyReport,
     apply_config,
@@ -48,6 +50,7 @@ from .config import (
     Config,
     ConfigError,
     DhcpReservation,
+    WifiAp,
     config_path,
     load_config,
     save_config,
@@ -514,7 +517,7 @@ def create_app(
         else:
             for error in report.errors:
                 flash(error, "error")
-        allowed = {"dashboard", "network", "pppoe", "firewall", "system", "apply"}
+        allowed = {"dashboard", "network", "pppoe", "wifi", "firewall", "system", "apply"}
         target = request.form.get("next", "")
         return redirect(url_for(target if target in allowed else "dashboard"))
 
@@ -709,6 +712,36 @@ def create_app(
         return render_template(
             "pppoe.html", cfg=cfg, wan_info=_wan_dhcp_info(cfg)
         )
+
+    @app.route("/wifi", methods=["GET", "POST"])
+    def wifi() -> str:
+        cfg = load()
+        if request.method == "POST":
+            try:
+                w = cfg.wifi
+                w.enabled = _bool(request.form, "wifi_enabled")
+                w.ssid = request.form.get("wifi_ssid", "").strip()
+                w.password = request.form.get("wifi_password", "")
+                w.country = request.form.get("wifi_country", "BE").strip().upper()
+                w.aps = []
+                for index in range(MAX_WIFI_APS):
+                    key = f"wifi_band_{index}"
+                    if key not in request.form:
+                        continue
+                    w.aps.append(WifiAp(
+                        interface=request.form.get(
+                            f"wifi_iface_{index}", ""
+                        ).strip(),
+                        band=request.form.get(key, "2.4").strip(),
+                        channel=_int(request.form, f"wifi_channel_{index}", 0),
+                    ))
+            except (KeyError, ValueError) as exc:
+                flash(f"Ongeldige invoer: {exc}", "error")
+            else:
+                result = save_and_apply(cfg, "wifi")
+                if result:
+                    return result
+        return render_template("wifi.html", cfg=cfg, wifi_rows=wifi_rows(cfg))
 
     @app.route("/firewall", methods=["GET", "POST"])
     def firewall() -> str:

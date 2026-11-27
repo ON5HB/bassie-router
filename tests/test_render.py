@@ -5,8 +5,10 @@ from bassierouter.nft import render_nft
 from bassierouter.services import (
     BEGIN,
     END,
+    bands_from_iw_output,
     merge_managed_file,
     render_cpu_script,
+    render_hostapd_conf,
     render_factory_boot_script,
     render_grub_factory,
     render_dnsmasq,
@@ -310,6 +312,13 @@ def test_pppoe_options_include_idle_timeout_for_demand():
     assert "idle 300" in text
 
 
+def test_pppoe_options_without_demand_stay_connected():
+    cfg = Config()
+    text = render_client_options(cfg)
+    assert "demand" not in text
+    assert "idle " not in text
+
+
 def test_pppoe_check_pings_modem_before_starting_pppd():
     cfg = Config()
     cfg.interfaces.wan_static_gateway = "192.168.1.1"
@@ -410,3 +419,57 @@ def test_systemd_units_use_root_without_sudo():
     assert "/usr/sbin/pppd call bassie-isp" in units["/etc/systemd/system/bassie-pppoe-client.service"]
     assert not any("pppoe-server" in name for name in units)
     assert "Environment=BASSIE_GUI_PAM=1" in units["/etc/systemd/system/bassie-router.service"]
+
+
+def test_iw_output_detects_both_bands():
+    text = (
+        "\t\t\t* 2412.0 MHz [1] (20.0 dBm)\n"
+        "\t\t\t* 5180.0 MHz [36] (20.0 dBm) (no IR)\n"
+    )
+    assert bands_from_iw_output(text) == ["2.4", "5"]
+    assert bands_from_iw_output("geen iw") == []
+
+
+def test_hostapd_conf_uses_lan_bridge_and_wpa2():
+    cfg = Config()
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    text = render_hostapd_conf(cfg, "wlx98254a16b8da", "2.4", 0)
+    assert "interface=wlx98254a16b8da" in text
+    assert "bridge=switch" in text
+    assert "ssid=Bassie" in text
+    assert "wpa_passphrase=wachtwoord123" in text
+    assert "hw_mode=g" in text
+    assert "channel=" not in text
+    text = render_hostapd_conf(cfg, "wlx98254a16c878", "5", 36)
+    assert "hw_mode=a" in text
+    assert "ieee80211ac=1" in text
+    assert "channel=36" in text
+
+
+def test_wifi_nics_join_lan_bridge_only_when_enabled(monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(
+        services, "detect_wireless_interfaces",
+        lambda: ["wlx98254a16b8da", "wlx98254a16c878"],
+    )
+    monkeypatch.setattr(services, "wifi_bands", lambda iface: [])
+    cfg = Config()
+    off = render_links_script(cfg)
+    assert 'link set dev "wlx98254a16b8da" nomaster' in off
+    assert 'link set dev "wlx98254a16c878" down' in off
+    cfg.wifi.enabled = True
+    on = render_links_script(cfg)
+    assert 'link set dev "wlx98254a16b8da" master "$BR"' in on
+    assert 'link set dev "wlx98254a16c878" master "$BR"' in on
+    result = subprocess.run(["sh", "-n"], input=on, text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_wifi_systemd_units_exist():
+    units = render_systemd_units(Config())
+    for index in (1, 2):
+        unit = units[f"/etc/systemd/system/bassie-wifi-{index}.service"]
+        assert "Requires=bassie-links.service" in unit
+        assert f"/etc/hostapd/bassie-router-{index}.conf" in unit

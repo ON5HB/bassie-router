@@ -81,7 +81,7 @@
     </div>
     <p>
       <label class="inline"><input type="checkbox" name="client_peerdns" {{ 'checked' if cfg.pppoe_client.usepeerdns }}> DNS van provider overnemen</label>
-      <label class="inline"><input type="checkbox" name="client_demand" {{ 'checked' if cfg.pppoe_client.demand }}> Op aanvraag (verbinding wordt verbroken na <input name="client_idle_seconds" type="number" min="1" max="86400" value="{{ cfg.pppoe_client.idle_seconds }}"> seconden geen verkeer)</label>
+      <label class="inline"><input type="checkbox" name="client_demand" {{ 'checked' if cfg.pppoe_client.demand }}> Op aanvraag verbinden en na <input name="client_idle_seconds" type="number" min="0" max="86400" value="{{ cfg.pppoe_client.idle_seconds }}"> seconden verbreken indien er geen verkeer is.</label>
     </p>
   </section>
 

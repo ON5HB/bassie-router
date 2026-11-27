@@ -1,4 +1,4 @@
 """Bassie-Router — IPv4-router voor Debian 13 met PPPoE, firewall en HTTP-GUI."""
 
-__version__ = "0.1.60"
-__release_date__ = "2026-11-26"
+__version__ = "0.1.61"
+__release_date__ = "2026-11-27"

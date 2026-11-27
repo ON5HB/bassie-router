@@ -7,6 +7,7 @@ from bassierouter.config import (
     migrate_config,
     save_config,
     validate,
+    WifiAp,
 )
 
 
@@ -38,6 +39,40 @@ def test_vlan_zero_means_no_vlan_also_from_old_configs():
 
 def test_lan_has_no_vlan_option():
     assert "lan_vlan_id" not in Config().interfaces.__dict__
+
+
+def test_wifi_is_off_by_default_and_needs_credentials():
+    cfg = Config()
+    assert cfg.wifi.enabled is False
+    assert cfg.wifi.aps == []
+    assert validate(cfg) == []
+    cfg.wifi.enabled = True
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    assert validate(cfg) == []
+    cfg.wifi.aps.append(WifiAp(interface="wlx0", band="6", channel=0))
+    assert any("wifi: band" in e for e in validate(cfg))
+    cfg.wifi.aps[0].band = "5"
+    cfg.wifi.aps[0].channel = 11
+    assert any("wifi: kanaal voor 5 GHz" in e for e in validate(cfg))
+
+
+def test_wifi_round_trip_with_two_radios(tmp_path):
+    cfg = Config()
+    cfg.wifi.enabled = True
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    cfg.wifi.aps = [
+        WifiAp(interface="wlx98254a16b8da", band="2.4", channel=0),
+        WifiAp(interface="wlx98254a16c878", band="5", channel=36),
+    ]
+    path = tmp_path / "config.json"
+    save_config(cfg, path)
+    loaded = load_config(path)
+    assert loaded.wifi.aps[0].band == "2.4"
+    assert loaded.wifi.aps[1].interface == "wlx98254a16c878"
+    assert loaded.wifi.aps[1].channel == 36
+    assert validate(loaded) == []
 
 
 def test_custom_bridge_name_is_kept_everywhere(tmp_path):
