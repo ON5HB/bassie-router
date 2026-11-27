@@ -2,6 +2,8 @@
 {% block title %}Wifi{% endblock %}
 {% block content %}
 <h1>Wifi</h1>
+{% set channels_24 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] %}
+{% set channels_5 = [0, 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165, 169, 173, 177, 181, 185, 189, 193, 196] %}
 <form method="post" data-dirty-actions>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="next" value="wifi">
@@ -13,29 +15,78 @@
       <label>Wachtwoord (minimaal 8 tekens) <input name="wifi_password" type="password" value="{{ cfg.wifi.password }}"></label>
       <label>Landcode <input name="wifi_country" maxlength="2" value="{{ cfg.wifi.country }}"></label>
     </div>
-    <p class="hint">Beide radio's gebruiken dezelfde netwerknaam en wachtwoord, zodat apparaten automatisch de beste band kiezen.</p>
-    {% for row in wifi_rows %}
+    <p class="hint">Alle radio's gebruiken dezelfde netwerknaam en wachtwoord, zodat apparaten automatisch de beste band kiezen.</p>
+  </section>
+
+  {% for row in wifi_rows %}
+  {% set selected_24 = row.channel if row.band == '2.4' else 11 %}
+  {% set selected_5 = row.channel if row.band == '5' else 36 %}
+  <section class="card" data-wifi-radio="{{ row.index }}">
+    <h3>Radio {{ row.index }}: <code>{{ row.interface }}</code></h3>
+    <input type="hidden" name="wifi_iface_{{ row.index }}" value="{{ row.interface }}">
+    <p><label class="inline"><input type="checkbox" name="wifi_enabled_{{ row.index }}" {{ 'checked' if row.enabled }}> Deze radio gebruiken</label></p>
     <div class="row">
-      <input type="hidden" name="wifi_iface_{{ row.index }}" value="{{ row.interface }}">
-      <label>Radio {{ row.index + 1 }}: <code>{{ row.interface }}</code>
-        <select name="wifi_band_{{ row.index }}">
+      <label>Band
+        <select name="wifi_band_{{ row.index }}" data-wifi-band="{{ row.index }}">
           <option value="2.4" {{ 'selected' if row.band == '2.4' }}>2,4 GHz</option>
           <option value="5" {{ 'selected' if row.band == '5' }}>5 GHz</option>
         </select>
       </label>
-      <label>Kanaal <input name="wifi_channel_{{ row.index }}" type="number" min="0" max="196" value="{{ row.channel }}"></label>
+      <label>Kanaal 2,4 GHz
+        <select name="wifi_channel_24_{{ row.index }}" data-wifi-channel="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
+          {% for ch in channels_24 %}<option value="{{ ch }}" {{ 'selected' if selected_24 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Kanaal 5 GHz
+        <select name="wifi_channel_5_{{ row.index }}" data-wifi-channel="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
+          {% for ch in channels_5 %}<option value="{{ ch }}" {{ 'selected' if selected_5 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Bandbreedte 2,4 GHz
+        <select name="wifi_width_24_{{ row.index }}" data-wifi-width="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
+          <option value="20" {{ 'selected' if row.width == '20' }}>20 MHz</option>
+          <option value="40" {{ 'selected' if row.width in ('', '40') }}>40 MHz</option>
+        </select>
+      </label>
+      <label>Bandbreedte 5 GHz
+        <select name="wifi_width_5_{{ row.index }}" data-wifi-width="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
+          <option value="20" {{ 'selected' if row.width == '20' }}>20 MHz</option>
+          <option value="40" {{ 'selected' if row.width == '40' }}>40 MHz</option>
+          <option value="80" {{ 'selected' if row.width in ('', '80') }}>80 MHz</option>
+          <option value="160" {{ 'selected' if row.width == '160' }}>160 MHz</option>
+        </select>
+      </label>
     </div>
-    <p class="hint">{% if row.bands %}Band(en) van deze radio: {{ row.bands|join(' en ') }} GHz.{% else %}Band niet bekend; installeer <code>iw</code> en kijk dan opnieuw.{% endif %}</p>
-    {% else %}
-    <p class="hint">Geen draadloze NIC gevonden.</p>
-    {% endfor %}
-    <p class="hint">Kanaal 0 = automatisch (op 5 GHz gebruikt de router kanaal 36). De radio's komen op de switch-bridge, zodat wifi-klanten hetzelfde IP- en DHCP-netwerk krijgen als bekabelde poorten.</p>
+    <p class="hint">{% if row.bands %}Band(en) van deze radio: {{ row.bands|join(' en ') }} GHz.{% else %}Band niet bekend; installeer <code>iw</code> en kijk dan opnieuw.{% endif %}
+      Kanaal <code>0</code> = autokanaal; op 5 GHz gebruikt de router dan kanaal <code>36</code>. 80 MHz kan op kanaal 36-48 of 149-161, 160 MHz op 149-161. De radio komt op de bridge <code>switch</code>.</p>
   </section>
+  {% else %}
+  <p class="hint">Geen draadloze NIC gevonden.</p>
+  {% endfor %}
 
   <div class="actions" data-form-actions hidden>
     <button type="submit" class="primary">Wijzigingen Opslaan</button>
     <button type="submit" class="danger" formnovalidate formaction="{{ url_for('discard') }}">Negeren</button>
   </div>
-  <p class="hint">De knoppen verschijnen zodra je iets wijzigt. Opslaan bewaart én voert meteen toe; Negeren zet alles terug naar de laatst toegepaste stand.</p>
+  <p class="hint">De knoppen verschijnen zodra je iets wijzigt. Opslaan bewaart én voert meteen toe; Negeren zet alles terug naar de laatst toegepaste situatie. Niets gewijzigd.</p>
 </form>
+<script>
+(function () {
+  document.querySelectorAll('[data-wifi-band]').forEach(function (band) {
+    var index = band.getAttribute('data-wifi-band');
+    function sync() {
+      var is24 = band.value === '2.4';
+      var kind = is24 ? '24' : '5';
+      document.querySelectorAll('[data-wifi-index="' + index + '"]').forEach(function (field) {
+        var active = field.getAttribute('data-wifi-channel') === kind ||
+                     field.getAttribute('data-wifi-width') === kind;
+        field.disabled = !active;
+        field.hidden = !active;
+      });
+    }
+    band.addEventListener('change', sync);
+    sync();
+  });
+})();
+</script>
 {% endblock %}

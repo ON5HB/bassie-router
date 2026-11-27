@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 from . import __release_date__, __version__
-from .config import Config
+from .config import Config, WifiAp
 
 BEGIN = "# BEGIN Bassie-Router (automatisch gegenereerd)"
 END = "# END Bassie-Router"
@@ -145,7 +145,7 @@ def render_links_script(cfg: Config) -> str:
     wifi_block = ""
     if cfg.wifi.enabled:
         # De AP's horen bij hetzelfde untagged switch-netwerk als de LAN-poorten.
-        for iface, _band, _channel in wifi_plan(cfg):
+        for _index, iface, _band, _channel, _width in wifi_plan(cfg):
             wifi_block += f"""
 # WiFi-AP op de LAN-bridge (zelfde DHCP/DNS als bekabeld).
 if exists "{iface}"; then
@@ -668,35 +668,62 @@ def detect_wireless_interfaces() -> list[str]:
 MAX_WIFI_APS = 2
 
 
+def _wifi_defaults(index: int) -> tuple[str, int, str]:
+    """Standaardband, kanaal en breedte voor radio 1 of 2."""
+    if index == 1:
+        return "2.4", 11, "40"
+    return "5", 36, "80"
+
+
+def _saved_wifi_ap(cfg: Config, interface: str) -> WifiAp | None:
+    """Eerder opgeslagen keuzes voor deze NIC (ook na wisselen van poort)."""
+    for ap in cfg.wifi.aps:
+        if ap.interface == interface:
+            return ap
+    return None
+
+
 def wifi_rows(cfg: Config) -> list[dict[str, object]]:
-    """Rijen voor de GUI: één per gevonden radio, met eigen band en kanaal."""
-    radios = detect_wireless_interfaces()
+    """Rijen voor de GUI: één per gevonden radio, met eigen keuzes."""
     rows: list[dict[str, object]] = []
-    for index, iface in enumerate(radios[:MAX_WIFI_APS]):
-        ap = cfg.wifi.aps[index] if index < len(cfg.wifi.aps) else None
+    for index, iface in enumerate(
+        detect_wireless_interfaces()[:MAX_WIFI_APS], 1
+    ):
+        ap = _saved_wifi_ap(cfg, iface)
+        band, channel, width = _wifi_defaults(index)
         rows.append({
             "index": index,
             "interface": iface,
-            "band": ap.band if ap else ("2.4" if index == 0 else "5"),
-            "channel": ap.channel if ap else (11 if index == 0 else 36),
+            "enabled": ap.enabled if ap else True,
+            "band": ap.band if ap else band,
+            "channel": ap.channel if ap else channel,
+            "width": ap.width if ap else width,
             "bands": wifi_bands(iface),
         })
     return rows
 
 
-def wifi_plan(cfg: Config) -> list[tuple[str, str, int]]:
-    """Actieve AP's: opgeslagen keuzes, of automatisch bij een lege config."""
-    if cfg.wifi.aps:
-        return [
-            (ap.interface, ap.band, ap.channel)
-            for ap in cfg.wifi.aps[:MAX_WIFI_APS]
-            if ap.interface
-        ]
-    radios = detect_wireless_interfaces()[:MAX_WIFI_APS]
-    return [
-        (iface, "2.4" if index == 0 else "5", 11 if index == 0 else 36)
-        for index, iface in enumerate(radios)
-    ]
+def wifi_plan(cfg: Config) -> list[tuple[int, str, str, int, str]]:
+    """Actieve AP's: (unit-nummer, NIC, band, kanaal, breedte).
+
+    Alleen radio's die er echt zijn en niet apart zijn uitgezet.
+    """
+    plan: list[tuple[int, str, str, int, str]] = []
+    for index, iface in enumerate(
+        detect_wireless_interfaces()[:MAX_WIFI_APS], 1
+    ):
+        ap = _saved_wifi_ap(cfg, iface)
+        if ap and not ap.enabled:
+            continue
+        band, channel, width = _wifi_defaults(index)
+        plan.append((
+            index,
+            iface,
+            ap.band if ap else band,
+            ap.channel if ap else channel,
+            ap.width if ap else width,
+        ))
+    return plan
 
 
 def bands_from_iw_output(text: str) -> list[str]:
@@ -739,14 +766,28 @@ def wifi_bands(interface: str) -> list[str]:
     return bands_from_iw_output(result.stdout)
 
 
+def vht_center(channel: int, width: str) -> int | None:
+    """Centrumkanaal voor 80/160 MHz op de niet-DFS-blochen."""
+    blocks = (
+        (36, 48, 42, "80"),
+        (149, 161, 155, "80"),
+        (149, 161, 163, "160"),
+    )
+    for low, high, center, needed in blocks:
+        if needed == width and low <= channel <= high:
+            return center
+    return None
+
+
 def render_hostapd_conf(
-    cfg: Config, interface: str, band: str, channel: int
+    cfg: Config, interface: str, band: str, channel: int, width: str = ""
 ) -> str:
     """hostapd-configuratie: accesspoint op de LAN-bridge."""
     wifi = cfg.wifi
     if band == "5" and not channel:
         # hostapd kan op 5 GHz geen frequentie kiezen uit kanaal 0.
         channel = 36
+    width = width or ("40" if band == "2.4" else "80")
     lines = [
         "# Gegenereerd door Bassie-Router - WiFi accesspoint (IPv4-LAN)",
         f"interface={shlex.quote(interface)}",
@@ -766,6 +807,17 @@ def render_hostapd_conf(
     ]
     if channel:
         lines.insert(7, f"channel={channel}")
+    if width in ("40", "80", "160") and channel:
+        if band == "2.4":
+            direction = "HT40+" if channel <= 7 else "HT40-"
+        else:
+            direction = "HT40+"
+        lines.append(f"ht_capab=[{direction}][SHORT-GI-20][SHORT-GI-40]")
+    if band == "5" and width in ("80", "160"):
+        center = vht_center(channel, width)
+        if center:
+            lines.append(f"vht_oper_chwidth={1 if width == '80' else 2}")
+            lines.append(f"vht_oper_centr_freq_seg0_idx={center}")
     return "\n".join(line for line in lines if line) + "\n"
 
 

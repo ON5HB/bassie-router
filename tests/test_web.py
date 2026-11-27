@@ -557,12 +557,16 @@ def test_gui_wifi_form_saves_two_accesspoints(tmp_path):
         "wifi_ssid": "Bassie",
         "wifi_password": "wachtwoord123",
         "wifi_country": "be",
-        "wifi_iface_0": "wlx98254a16b8da",
-        "wifi_band_0": "2.4",
-        "wifi_channel_0": "0",
-        "wifi_iface_1": "wlx98254a16c878",
-        "wifi_band_1": "5",
-        "wifi_channel_1": "36",
+        "wifi_iface_1": "wlx98254a16b8da",
+        "wifi_enabled_1": "on",
+        "wifi_band_1": "2.4",
+        "wifi_channel_24_1": "11",
+        "wifi_width_24_1": "40",
+        "wifi_iface_2": "wlx98254a16c878",
+        "wifi_enabled_2": "on",
+        "wifi_band_2": "5",
+        "wifi_channel_5_2": "36",
+        "wifi_width_5_2": "80",
     })
     assert response.status_code == 302
     cfg = load_config(cfg_file)
@@ -571,18 +575,44 @@ def test_gui_wifi_form_saves_two_accesspoints(tmp_path):
     assert cfg.wifi.country == "BE"
     assert len(cfg.wifi.aps) == 2
     assert cfg.wifi.aps[0].interface == "wlx98254a16b8da"
+    assert cfg.wifi.aps[0].enabled is True
+    assert cfg.wifi.aps[0].width == "40"
     assert cfg.wifi.aps[1].band == "5"
     assert cfg.wifi.aps[1].channel == 36
+    assert cfg.wifi.aps[1].width == "80"
 
 
-def test_gui_wifi_page_uses_one_shared_network_name(tmp_path):
+def test_gui_wifi_page_uses_one_shared_network_name(tmp_path, monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(services, "detect_wireless_interfaces", lambda: [])
     client, _ = make_client(tmp_path)
     page = client.get("/wifi").data
     assert b">Wifi</a>" in page
     assert b'name="wifi_enabled"' in page
     assert b'name="wifi_ssid"' in page
-    assert b'name="wifi_band_0"' not in page  # geen radio's in de testomgeving
-    assert b'switch-bridge' in page
+    assert b'name="wifi_band_1"' not in page  # geen radio's in de testomgeving
+    assert b'Geen draadloze NIC gevonden.' in page
+
+
+def test_gui_wifi_page_has_channel_and_width_dropdowns(tmp_path, monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(
+        services, "detect_wireless_interfaces",
+        lambda: ["wlx98254a16b8da", "wlx98254a16c878"],
+    )
+    monkeypatch.setattr(services, "wifi_bands", lambda iface: [])
+    client, _ = make_client(tmp_path)
+    page = client.get("/wifi").data
+    assert b'name="wifi_enabled_1"' in page
+    assert b'name="wifi_enabled_2"' in page
+    assert b'name="wifi_channel_24_1"' in page
+    assert b'name="wifi_channel_5_2"' in page
+    assert b'name="wifi_width_24_1"' in page
+    assert b'name="wifi_width_5_2"' in page
+    assert b'0 = autokanaal' in page
+    assert b'De radio komt op de bridge' in page
 
 
 def test_gui_pppoe_form_allows_zero_idle_seconds(tmp_path):

@@ -31,7 +31,7 @@ try:
 except ImportError:  # python3-pam nog niet geïnstalleerd (bijv. in tests)
     pam = None  # type: ignore[assignment]
 
-from .services import MAX_WIFI_APS, wifi_rows
+from .services import MAX_WIFI_APS, detect_wireless_interfaces, wifi_rows
 
 from .apply import (
     ApplyReport,
@@ -513,7 +513,7 @@ def create_app(
             app.config["BASSIE_CONFIG_FILE"], root=app.config["BASSIE_ROOT"]
         )
         if report.ok:
-            flash("Wijzigingen genegeerd; velden terug naar de laatst toegepaste stand.", "ok")
+            flash("Wijzigingen genegeerd; velden terug naar de laatst toegepaste situatie. Niets gewijzigd.", "ok")
         else:
             for error in report.errors:
                 flash(error, "error")
@@ -658,10 +658,19 @@ def create_app(
             # Bij een fout de niet-opgeslagen wijziging niet laten meedoen.
             cfg = load()
             reservations = cfg.interfaces.dhcp_reservations
+        leases = dhcp.read_leases(runner)
+        wifi_macs, wifi_ok = dhcp.read_wifi_macs(
+            runner, detect_wireless_interfaces()
+        )
+        for lease in leases:
+            lease.via = (
+                "Wifi" if lease.mac in wifi_macs
+                else ("Kabel" if wifi_ok else "Onbekend")
+            )
         return render_template(
             "dhcp.html",
             cfg=cfg,
-            leases=dhcp.read_leases(runner),
+            leases=leases,
         )
 
     @app.route("/pppoe", methods=["GET", "POST"])
@@ -724,16 +733,31 @@ def create_app(
                 w.password = request.form.get("wifi_password", "")
                 w.country = request.form.get("wifi_country", "BE").strip().upper()
                 w.aps = []
-                for index in range(MAX_WIFI_APS):
-                    key = f"wifi_band_{index}"
-                    if key not in request.form:
+                for index in range(1, MAX_WIFI_APS + 1):
+                    iface = request.form.get(f"wifi_iface_{index}", "").strip()
+                    band_key = f"wifi_band_{index}"
+                    if not iface and band_key not in request.form:
                         continue
+                    band = request.form.get(band_key, "2.4").strip()
+                    if band not in ("2.4", "5"):
+                        band = "2.4"
+                    kind = "24" if band == "2.4" else "5"
+                    channel = _int(
+                        request.form, f"wifi_channel_{kind}_{index}", 0
+                    )
+                    width = request.form.get(
+                        f"wifi_width_{kind}_{index}", ""
+                    ).strip()
+                    if band == "2.4" and width not in ("20", "40"):
+                        width = "40"
+                    if band == "5" and width not in ("20", "40", "80", "160"):
+                        width = "80"
                     w.aps.append(WifiAp(
-                        interface=request.form.get(
-                            f"wifi_iface_{index}", ""
-                        ).strip(),
-                        band=request.form.get(key, "2.4").strip(),
-                        channel=_int(request.form, f"wifi_channel_{index}", 0),
+                        enabled=_bool(request.form, f"wifi_enabled_{index}"),
+                        interface=iface,
+                        band=band,
+                        channel=channel,
+                        width=width,
                     ))
             except (KeyError, ValueError) as exc:
                 flash(f"Ongeldige invoer: {exc}", "error")

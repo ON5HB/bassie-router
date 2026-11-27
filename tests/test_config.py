@@ -57,21 +57,46 @@ def test_wifi_is_off_by_default_and_needs_credentials():
     assert any("wifi: kanaal voor 5 GHz" in e for e in validate(cfg))
 
 
+def test_wifi_width_is_per_band():
+    cfg = Config()
+    cfg.wifi.enabled = True
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    cfg.wifi.aps = [
+        WifiAp(interface="wlx0", band="2.4", channel=11, width="40"),
+        WifiAp(interface="wlx1", band="5", channel=36, width="80"),
+    ]
+    assert validate(cfg) == []
+    cfg.wifi.aps[0].width = "80"
+    assert any("bandbreedte" in e for e in validate(cfg))
+    cfg.wifi.aps[0].width = "40"
+    cfg.wifi.aps[1].channel = 100
+    assert any("80 MHz" in e for e in validate(cfg))
+    cfg.wifi.aps[1].channel = 149
+    cfg.wifi.aps[1].width = "160"
+    assert validate(cfg) == []
+
 def test_wifi_round_trip_with_two_radios(tmp_path):
     cfg = Config()
     cfg.wifi.enabled = True
     cfg.wifi.ssid = "Bassie"
     cfg.wifi.password = "wachtwoord123"
     cfg.wifi.aps = [
-        WifiAp(interface="wlx98254a16b8da", band="2.4", channel=0),
-        WifiAp(interface="wlx98254a16c878", band="5", channel=36),
+        WifiAp(interface="wlx98254a16b8da", band="2.4", channel=11, width="40"),
+        WifiAp(
+            interface="wlx98254a16c878", band="5", channel=36, width="80",
+            enabled=False,
+        ),
     ]
     path = tmp_path / "config.json"
     save_config(cfg, path)
     loaded = load_config(path)
     assert loaded.wifi.aps[0].band == "2.4"
+    assert loaded.wifi.aps[0].width == "40"
     assert loaded.wifi.aps[1].interface == "wlx98254a16c878"
     assert loaded.wifi.aps[1].channel == 36
+    assert loaded.wifi.aps[1].width == "80"
+    assert loaded.wifi.aps[1].enabled is False
     assert validate(loaded) == []
 
 

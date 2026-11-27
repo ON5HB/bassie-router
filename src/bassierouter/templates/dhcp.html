@@ -25,13 +25,14 @@
 <section class="card">
   <h2>Huidige DHCP-uitgaven</h2>
   <table>
-    <thead><tr><th>MAC-adres</th><th>IP-adres</th><th>Naam</th><th>Gezien</th><th></th></tr></thead>
+    <thead><tr><th>MAC-adres</th><th>IP-adres</th><th>Naam</th><th>Via</th><th>Gezien</th><th></th></tr></thead>
     <tbody>
     {% for lease in leases %}
       <tr>
         <td><code>{{ lease.mac }}</code></td>
         <td><code>{{ lease.ip }}</code></td>
         <td>{{ lease.name or '-' }}</td>
+        <td>{{ lease.via or '-' }}</td>
         <td class="muted">{{ lease.since or '-' }}</td>
         <td>
           <form method="post">
@@ -45,11 +46,11 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="5" class="muted">Nog geen klanten bekend.</td></tr>
+      <tr><td colspan="6" class="muted">Nog geen klanten bekend.</td></tr>
     {% endfor %}
     </tbody>
   </table>
-  <p class="hint">Deze lijst komt uit het leasebestand van dnsmasq. Vastzetten geeft dit apparaat voortaan altijd dit IP, met een lease die niet verloopt.</p>
+  <p class="hint">Deze lijst komt uit het leasebestand van dnsmasq; <code>Via</code> komt uit de aangemelde stations van de wifi-radio's. Vastzetten geeft dit apparaat voortaan altijd dit IP, met een lease die niet verloopt.</p>
 </section>
 
 <section class="card">

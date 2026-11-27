@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Sequence
 
 from .runner import CommandRunner
 
@@ -15,6 +16,7 @@ class Lease:
     ip: str
     name: str = ""
     since: str = ""
+    via: str = ""
 
     @property
     def pin_name(self) -> str:
@@ -54,3 +56,27 @@ def read_leases(runner: CommandRunner, path: str = LEASE_FILE) -> list[Lease]:
     if not result.ok:
         return []
     return parse_leases(result.stdout)
+
+
+def read_wifi_macs(
+    runner: CommandRunner, interfaces: Sequence[str]
+) -> tuple[set[str], bool]:
+    """MAC's die nu bij een van de wifi-radio's zijn geassocieerd.
+
+    Tweede waarde geeft aan of de uitleesopdracht is gelukt; zo niet dan is
+    'Kabel' geen betrouwbare conclusie.
+    """
+    if not interfaces:
+        return set(), True
+    macs: set[str] = set()
+    checked = False
+    for iface in interfaces:
+        result = runner.run(["iw", "dev", iface, "station", "dump"])
+        if not result.ok:
+            continue
+        checked = True
+        for line in result.stdout.splitlines():
+            fields = line.strip().split()
+            if len(fields) >= 2 and fields[0] == "Station":
+                macs.add(fields[1].lower())
+    return macs, checked

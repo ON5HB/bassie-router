@@ -140,12 +140,16 @@ class PPPoEClient:
 
 @dataclass
 class WifiAp:
+    enabled: bool = True
+    """Deze radio apart aan/uit."""
     interface: str = ""
     """Draadloze NIC voor dit accesspoint."""
     band: str = "2.4"
     """'2.4' of '5' (GHz)."""
     channel: int = 0
     """0 = automatisch kanaal."""
+    width: str = ""
+    """'20', '40', '80' of '160' MHz; leeg = bandstandaard."""
 
 
 @dataclass
@@ -534,6 +538,19 @@ def validate(cfg: Config) -> list[str]:
                 errors.append("wifi: kanaal voor 2,4 GHz moet 0 of 1 t/m 13 zijn")
             if ap.band == "5" and ap.channel and ap.channel not in range(36, 197):
                 errors.append("wifi: kanaal voor 5 GHz moet 0 of 36 t/m 196 zijn")
+            allowed = ("20", "40") if ap.band == "2.4" else ("20", "40", "80", "160")
+            if ap.width and ap.width not in allowed:
+                errors.append(f"wifi: bandbreedte moet {' of '.join(allowed)} MHz zijn")
+            if ap.band == "5" and ap.width == "80":
+                if not (
+                    ap.channel == 0
+                    or 36 <= ap.channel <= 48
+                    or 149 <= ap.channel <= 161
+                ):
+                    errors.append("wifi: 80 MHz alleen op kanaal 36-48 of 149-161")
+            if ap.band == "5" and ap.width == "160":
+                if not 149 <= ap.channel <= 161:
+                    errors.append("wifi: 160 MHz alleen op kanaal 149-161")
 
     fw = cfg.firewall
     if fw.wan_input_policy not in ("drop", "accept"):

@@ -61,7 +61,13 @@ def test_dry_run_does_not_write(tmp_path):
     assert not (tmp_path / "etc").exists()
 
 
-def test_wifi_services_follow_enabled_flag():
+def test_wifi_services_follow_enabled_flag(monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(
+        services, "detect_wireless_interfaces",
+        lambda: ["wlx98254a16b8da", "wlx98254a16c878"],
+    )
     cfg = Config()
     for index in (1, 2):
         assert [
@@ -71,8 +77,10 @@ def test_wifi_services_follow_enabled_flag():
     cfg.wifi.ssid = "Bassie"
     cfg.wifi.password = "wachtwoord123"
     cfg.wifi.aps = [
-        WifiAp(interface="wlx98254a16b8da", band="2.4"),
-        WifiAp(interface="wlx98254a16c878", band="5", channel=36),
+        WifiAp(interface="wlx98254a16b8da", band="2.4", channel=11, width="40"),
+        WifiAp(
+            interface="wlx98254a16c878", band="5", channel=36, width="80"
+        ),
     ]
     commands = build_commands(cfg)
     for index in (1, 2):
@@ -82,9 +90,16 @@ def test_wifi_services_follow_enabled_flag():
     files = build_files(cfg)
     assert "ssid=Bassie" in files["/etc/hostapd/bassie-router-1.conf"]
     assert "channel=36" in files["/etc/hostapd/bassie-router-2.conf"]
+    assert "vht_oper_chwidth=1" in files["/etc/hostapd/bassie-router-2.conf"]
     assert "/etc/systemd/system/bassie-wifi-2.service" in files
     services = {s["name"]: s for s in service_status(cfg, FakeRunner())}
     assert services["Wifi accesspoint"]["needed"] is True
+
+    # AP 2 apart uitzetten mag AP 1 niet raken.
+    cfg.wifi.aps[1].enabled = False
+    commands = build_commands(cfg)
+    assert ["systemctl", "enable", "--now", "bassie-wifi-1.service"] in commands
+    assert ["systemctl", "disable", "--now", "bassie-wifi-2.service"] in commands
 
 
 def test_wifi_service_not_needed_when_off():

@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.62
+Versie: 0.1.63
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -359,9 +359,16 @@ alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
 
 - Eén **netwerknaam (SSID)** en **wachtwoord** voor alle radio's, zodat clients
   zelf de beste band kiezen (dualband).
-- Per radio kies je apart **2,4 GHz** of **5 GHz** en een kanaal. Kanaal `0` is
-  automatisch; op 5 GHz zet de router dan kanaal `36` in, omdat hostapd met
-  kanaal `0` op 5 GHz geen frequentie kan bepalen. Standaard: `11` / `36`.
+- De router telt de radio's die echt aanwezig zijn: bij **één dongle** krijg je
+  één rij en kies je zelf de band; bij **twee dongles** krijg je twee rijen,
+  elke band apart instelbaar en apart aan/uit te zetten.
+- Per radio kies je **2,4 GHz** of **5 GHz** uit een dropdown. Het veld ernaast
+  toont alleen de kanalen die bij die band horen; `0 = autokanaal`. Op 5 GHz
+  zet de router bij `0` kanaal `36` in, omdat hostapd met kanaal `0` op 5 GHz
+  geen frequentie kan bepalen. Standaard: `11` / `36`.
+- Bandbreedte per band: **2,4 GHz** kiest uit 20 of 40 MHz, **5 GHz** uit 20,
+  40, 80 of 160 MHz. 80 MHz kan op kanaal 36-48 of 149-161, 160 MHz op
+  149-161. Standaard: 40 / 80 MHz.
 - De NIC's komen op de bridge `switch`: wifi-clients krijgen IP, DNS en DHCP
   uit hetzelfde LAN als de bekabelde poorten. Er komen geen extra firewall-
   regels bij.
@@ -369,6 +376,8 @@ alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
   leeg, maar de AP's starten wel.
 - Opslaan schrijft `/etc/hostapd/bassie-router-1.conf` (en `-2.conf`) en start
   `bassie-wifi-1.service` / `bassie-wifi-2.service`. Uitzetten stopt ze weer.
+  Een dongle die later is weggehaald krijgt geen AP meer; de overige radio
+  behoudt zijn instellingen.
 
 ## Portforwards
 

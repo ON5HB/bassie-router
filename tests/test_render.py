@@ -1,6 +1,6 @@
 import subprocess
 
-from bassierouter.config import Config, PortForward
+from bassierouter.config import Config, PortForward, WifiAp
 from bassierouter.nft import render_nft
 from bassierouter.services import (
     BEGIN,
@@ -152,7 +152,10 @@ def test_links_script_without_vlan():
     assert result.returncode == 0, result.stderr
 
 
-def test_links_script_bootstrap_uses_dhcp_on_bridge():
+def test_links_script_bootstrap_uses_dhcp_on_bridge(monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(services, "detect_wireless_interfaces", lambda: [])
     text = render_links_script(Config())
     assert 'BOOTSTRAP="1"' in text
     assert "bassie-lan-dhcp.service" in text
@@ -448,6 +451,41 @@ def test_hostapd_conf_uses_lan_bridge_and_wpa2():
     # Kanaal 0 is op 5 GHz niet bruikbaar voor hostapd.
     text = render_hostapd_conf(cfg, "wlx98254a16c878", "5", 0)
     assert "channel=36" in text
+
+
+def test_hostapd_conf_uses_selected_width():
+    cfg = Config()
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    text = render_hostapd_conf(cfg, "wlx0", "2.4", 11, "20")
+    assert "HT40" not in text
+    text = render_hostapd_conf(cfg, "wlx0", "2.4", 11, "40")
+    assert "ht_capab=[HT40-]" in text
+    text = render_hostapd_conf(cfg, "wlx1", "5", 36, "80")
+    assert "ht_capab=[HT40+]" in text
+    assert "vht_oper_chwidth=1" in text
+    assert "vht_oper_centr_freq_seg0_idx=42" in text
+    text = render_hostapd_conf(cfg, "wlx1", "5", 149, "160")
+    assert "vht_oper_chwidth=2" in text
+    assert "vht_oper_centr_freq_seg0_idx=163" in text
+
+
+def test_wifi_plan_skips_disabled_and_removed_radios(monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(
+        services, "detect_wireless_interfaces",
+        lambda: ["wlx98254a16c878"],
+    )
+    cfg = Config()
+    cfg.wifi.aps = [
+        WifiAp(interface="wlx98254a16b8da", band="2.4", channel=11),
+        WifiAp(interface="wlx98254a16c878", band="5", channel=36, width="80"),
+    ]
+    plan = services.wifi_plan(cfg)
+    assert plan == [(1, "wlx98254a16c878", "5", 36, "80")]
+    cfg.wifi.aps[1].enabled = False
+    assert services.wifi_plan(cfg) == []
 
 
 def test_wifi_nics_join_lan_bridge_only_when_enabled(monkeypatch):

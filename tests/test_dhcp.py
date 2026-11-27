@@ -1,7 +1,7 @@
 import time
 
 from bassierouter.config import Config, DhcpReservation, load_config, save_config, validate
-from bassierouter.dhcp import parse_leases
+from bassierouter.dhcp import parse_leases, read_wifi_macs
 from bassierouter.runner import CommandResult, FakeRunner
 from bassierouter.services import render_dnsmasq
 from bassierouter.web import create_app
@@ -43,6 +43,47 @@ def test_parse_leases_reads_mac_ip_and_name():
     assert parse_leases(
         "1764050000 aa:bb:cc:dd:ee:09 192.168.88.109 HPLaserjet56712367.local *\n"
     )[0].pin_name == "HPLaserjet56712367"
+
+
+def test_wifi_macs_come_from_station_dump():
+    runner = FakeRunner({
+        "iw dev wlan0 station dump": CommandResult(
+            [], stdout="Station aa:bb:cc:dd:ee:01 (on wlan0)\n\tsignal: -50 dBm\n"
+        )
+    })
+    macs, ok = read_wifi_macs(runner, ["wlan0"])
+    assert ok is True
+    assert macs == {"aa:bb:cc:dd:ee:01"}
+    assert read_wifi_macs(FakeRunner(), []) == (set(), True)
+
+
+def test_dhcp_page_marks_wifi_and_cable_clients(tmp_path, monkeypatch):
+    from bassierouter import web
+
+    monkeypatch.setattr(web, "detect_wireless_interfaces", lambda: ["wlan0"])
+    cfg_file = tmp_path / "config.json"
+    cfg = Config()
+    cfg.interfaces.dhcp_enabled = True
+    save_config(cfg, cfg_file)
+    runner = FakeRunner({
+        "cat /var/lib/misc/dnsmasq.leases": CommandResult([], stdout=LEASES),
+        "iw dev wlan0 station dump": CommandResult(
+            [], stdout="Station aa:bb:cc:dd:ee:01 (on wlan0)\n"
+        ),
+    })
+    app = create_app(
+        config_file=str(cfg_file), runner=runner, root=str(tmp_path)
+    )
+    app.config["TESTING"] = True
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = "testtoken"
+        sess["user"] = "root"
+        sess["login_at"] = time.time()
+    body = client.get("/dhcp").data
+    assert b"<th>Via</th>" in body
+    assert b">Wifi</td>" in body
+    assert b">Kabel</td>" in body
 
 
 def test_reservation_validation_and_dnsmasq_rendering():

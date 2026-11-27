@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.63 — 2026-11-27
+
+- Wifi: kanalen en bandbreedte per band als dropdown, radio apart aan/uit, DHCP-kolom Via en tekst Negeren aangepast
+
 ## 0.1.62 — 2026-11-27
 
 - 5 GHz-accesspoint gebruikt kanaal 36 bij kanaal 0

@@ -78,13 +78,12 @@ def build_files(cfg: Config, *, root: str = "/") -> dict[str, str]:
     }
     wifi_plan = services.wifi_plan(cfg)
     for index in range(1, services.MAX_WIFI_APS + 1):
-        iface, band, channel = (
-            wifi_plan[index - 1]
-            if index <= len(wifi_plan)
-            else ("", "2.4", 0)
+        entry = next((plan for plan in wifi_plan if plan[0] == index), None)
+        iface, band, channel, width = (
+            entry[1:] if entry else ("", "2.4", 0, "")
         )
         files[f"/etc/hostapd/bassie-router-{index}.conf"] = (
-            services.render_hostapd_conf(cfg, iface, band, channel)
+            services.render_hostapd_conf(cfg, iface, band, channel, width)
         )
     files.update({
         "/etc/systemd/system/dnsmasq.service.d/10-bassie.conf": (
@@ -150,9 +149,10 @@ def build_commands(cfg: Config) -> list[list[str]]:
         # VLAN-interface of credentials moeten wél in de volgende sessie.
         commands.append(["systemctl", "restart", "bassie-pppoe-client.service"])
     plan = services.wifi_plan(cfg) if cfg.wifi.enabled else []
+    needed_units = {entry[0] for entry in plan}
     for index in range(1, services.MAX_WIFI_APS + 1):
         unit = f"bassie-wifi-{index}.service"
-        needed = index <= len(plan)
+        needed = index in needed_units
         commands.append([
             "systemctl", "enable" if needed else "disable", "--now", unit
         ])
@@ -583,9 +583,10 @@ def service_status(
 
     pppoe_needed = cfg.interfaces.wan_mode == "pppoe" and cfg.pppoe_client.enabled
     wifi_plan = services.wifi_plan(cfg) if cfg.wifi.enabled else []
+    wifi_units = {entry[0] for entry in wifi_plan}
     wifi_ok = (
-        all(active(f"bassie-wifi-{i}.service") for i in range(1, len(wifi_plan) + 1))
-        if wifi_plan
+        all(active(f"bassie-wifi-{i}.service") for i in wifi_units)
+        if wifi_units
         else not any(
             active(f"bassie-wifi-{i}.service")
             for i in range(1, services.MAX_WIFI_APS + 1)
