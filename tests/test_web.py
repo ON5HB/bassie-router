@@ -630,6 +630,11 @@ def test_gui_wifi_width_menu_uses_dongle_capabilities(tmp_path, monkeypatch):
     assert b'<option value="40"' in page
     assert b'<option value="80"' in page
     assert b'<option value="160"' not in page
+    # De niet-gebruikte band heeft geen zichtbaar label meer.
+    assert page.count(b'<label hidden>Kanaal') == 1
+    assert page.count(b'<label >Kanaal') == 1
+    assert page.count(b'<label hidden>Bandbreedte') == 1
+    assert page.count(b'<label >Bandbreedte') == 1
 
 
 def test_gui_pppoe_form_allows_zero_idle_seconds(tmp_path):

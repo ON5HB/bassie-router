@@ -32,22 +32,22 @@
           <option value="5" {{ 'selected' if row.band == '5' }}>5 GHz</option>
         </select>
       </label>
-      <label>Kanaal
+      <label {{ 'hidden' if row.band != '2.4' }}>Kanaal
         <select name="wifi_channel_24_{{ row.index }}" data-wifi-channel="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
           {% for ch in channels_24 %}<option value="{{ ch }}" {{ 'selected' if selected_24 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
         </select>
       </label>
-      <label>Kanaal
+      <label {{ 'hidden' if row.band != '5' }}>Kanaal
         <select name="wifi_channel_5_{{ row.index }}" data-wifi-channel="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
           {% for ch in channels_5 %}<option value="{{ ch }}" {{ 'selected' if selected_5 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
         </select>
       </label>
-      <label>Bandbreedte
+      <label {{ 'hidden' if row.band != '2.4' }}>Bandbreedte
         <select name="wifi_width_24_{{ row.index }}" data-wifi-width="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
           {% for w in row.widths_24 %}<option value="{{ w }}" {{ 'selected' if row.width_24 == w }}>{{ w }} MHz</option>{% endfor %}
         </select>
       </label>
-      <label>Bandbreedte
+      <label {{ 'hidden' if row.band != '5' }}>Bandbreedte
         <select name="wifi_width_5_{{ row.index }}" data-wifi-width="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
           {% for w in row.widths_5 %}<option value="{{ w }}" {{ 'selected' if row.width_5 == w }}>{{ w }} MHz</option>{% endfor %}
         </select>
@@ -80,7 +80,8 @@
         var active = field.getAttribute('data-wifi-channel') === kind ||
                      field.getAttribute('data-wifi-width') === kind;
         field.disabled = !active;
-        field.hidden = !active;
+        var label = field.closest('label');
+        if (label) { label.hidden = !active; }
       });
     }
     band.addEventListener('change', sync);

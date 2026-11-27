@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.64
+Versie: 0.1.65
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
