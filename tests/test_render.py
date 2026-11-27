@@ -445,6 +445,9 @@ def test_hostapd_conf_uses_lan_bridge_and_wpa2():
     assert "hw_mode=a" in text
     assert "ieee80211ac=1" in text
     assert "channel=36" in text
+    # Kanaal 0 is op 5 GHz niet bruikbaar voor hostapd.
+    text = render_hostapd_conf(cfg, "wlx98254a16c878", "5", 0)
+    assert "channel=36" in text
 
 
 def test_wifi_nics_join_lan_bridge_only_when_enabled(monkeypatch):

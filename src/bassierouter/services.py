@@ -744,6 +744,9 @@ def render_hostapd_conf(
 ) -> str:
     """hostapd-configuratie: accesspoint op de LAN-bridge."""
     wifi = cfg.wifi
+    if band == "5" and not channel:
+        # hostapd kan op 5 GHz geen frequentie kiezen uit kanaal 0.
+        channel = 36
     lines = [
         "# Gegenereerd door Bassie-Router - WiFi accesspoint (IPv4-LAN)",
         f"interface={shlex.quote(interface)}",

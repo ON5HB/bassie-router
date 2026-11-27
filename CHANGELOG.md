@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.62 — 2026-11-27
+
+- 5 GHz-accesspoint gebruikt kanaal 36 bij kanaal 0
+
 ## 0.1.61 — 2026-11-27
 
 - Wifi-tab met twee accesspoints op switch-bridge (gedeelde SSID, band en kanaal per radio); PPPoE op aanvraag met tikbox en seconden

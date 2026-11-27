@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.61
+Versie: 0.1.62
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -360,7 +360,8 @@ alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
 - Eén **netwerknaam (SSID)** en **wachtwoord** voor alle radio's, zodat clients
   zelf de beste band kiezen (dualband).
 - Per radio kies je apart **2,4 GHz** of **5 GHz** en een kanaal. Kanaal `0` is
-  automatisch; de standaard is `11` voor 2,4 GHz en `36` voor 5 GHz.
+  automatisch; op 5 GHz zet de router dan kanaal `36` in, omdat hostapd met
+  kanaal `0` op 5 GHz geen frequentie kan bepalen. Standaard: `11` / `36`.
 - De NIC's komen op de bridge `switch`: wifi-clients krijgen IP, DNS en DHCP
   uit hetzelfde LAN als de bekabelde poorten. Er komen geen extra firewall-
   regels bij.
