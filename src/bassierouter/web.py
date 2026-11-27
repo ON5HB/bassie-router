@@ -77,12 +77,27 @@ def _csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def available_interfaces() -> list[str]:
-    """Fysieke NIC's, voor de WAN-dropdowns."""
+def available_interfaces(root: Path | None = None) -> list[str]:
+    """Echte netwerkpoorten: geen lo, bridge, wifi of virtuele NIC's."""
+    base = root or Path("/sys/class/net")
     try:
-        return sorted(p.name for p in Path("/sys/class/net").iterdir() if p.is_dir())
+        entries = sorted(base.iterdir())
     except OSError:
         return []
+    ports: list[str] = []
+    for entry in entries:
+        name = entry.name
+        if name == "lo" or "." in name:
+            continue
+        if (entry / "phy80211").exists() or (entry / "wireless").exists():
+            continue
+        if name.startswith(("ppp", "veth", "docker", "virbr", "tun", "tap")):
+            continue
+        # Alleen poorten met een echt PCI/USB-apparaat erachter.
+        if not (entry / "device").exists():
+            continue
+        ports.append(name)
+    return ports
 
 
 def _ipv4_from(command: list[str]) -> set[str]:

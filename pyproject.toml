@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bassie-router"
-version = "0.1.65"
+version = "0.1.66"
 description = "Bassie-Router: routercontroller voor Debian 13 (PPPoE-client, WAN-VLAN, nftables, dnsmasq, HTTP-GUI)"
 requires-python = ">=3.11"
 dependencies = ["Flask>=3.0"]

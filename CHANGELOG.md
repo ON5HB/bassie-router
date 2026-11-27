@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.66 — 2026-11-27
+
+- Netwerk toont alleen echte fysieke LAN-poorten (geen lo, wifi, bridge of virtuele NIC's)
+
 ## 0.1.65 — 2026-11-27
 
 - Wifi: ongebruikte Kanaal- en Bandbreedte-labels volledig verbergen

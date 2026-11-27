@@ -9,7 +9,7 @@ from bassierouter.config import Config, config_path, load_config, save_config
 from bassierouter.nft import render_nft
 from bassierouter.runner import FakeRunner
 from bassierouter.services import render_links_script
-from bassierouter.web import _ipv4_from, create_app, resolve_bind
+from bassierouter.web import _ipv4_from, available_interfaces, create_app, resolve_bind
 
 
 def test_ipv4_from_parses_ip_output(monkeypatch):
@@ -18,6 +18,22 @@ def test_ipv4_from_parses_ip_output(monkeypatch):
 
     monkeypatch.setattr("bassierouter.web.subprocess.run", lambda *a, **k: Result())
     assert _ipv4_from(["ip", "addr"]) == {"192.168.1.24"}
+
+
+def test_available_interfaces_only_shows_physical_ports(tmp_path):
+    root = tmp_path / "net"
+    device = tmp_path / "pci-device"
+    device.mkdir()
+    for name in (
+        "enp1s0", "enp2s0", "wlx123", "lo", "switch", "ppp0", "veth7",
+        "enp1s0.10",
+    ):
+        (root / name).mkdir(parents=True)
+    for name in ("enp1s0", "enp2s0", "wlx123"):
+        (root / name / "device").symlink_to(device)
+    (root / "wlx123" / "phy80211").mkdir()
+    (root / "switch" / "bridge").mkdir()
+    assert available_interfaces(root) == ["enp1s0", "enp2s0"]
 
 
 def test_resolve_bind_never_uses_wildcard(tmp_path, monkeypatch):
