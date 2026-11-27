@@ -13,9 +13,15 @@
     <div class="row">
       <label>Netwerknaam (SSID) <input name="wifi_ssid" maxlength="32" value="{{ cfg.wifi.ssid }}"></label>
       <label>Wachtwoord (minimaal 8 tekens) <input name="wifi_password" value="{{ cfg.wifi.password }}"></label>
-      <label>Landcode <input name="wifi_country" maxlength="2" value="{{ cfg.wifi.country }}"></label>
+      <label>Landcode
+        <select name="wifi_country">
+          {% for code, name in wifi_countries|dictsort %}
+          <option value="{{ code }}" {{ 'selected' if code == cfg.wifi.country }}>{{ code }} - {{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
     </div>
-    <p class="hint">Alle radio's gebruiken dezelfde netwerknaam en wachtwoord, zodat apparaten automatisch de beste band kiezen.</p>
+    <p class="hint">Alle radio's gebruiken dezelfde netwerknaam en wachtwoord, zodat apparaten automatisch de beste band kiezen. Landcodes zijn volgens ISO 3166-1; <code>00</code> is wereldwijd.</p>
   </section>
 
   {% for row in wifi_rows %}

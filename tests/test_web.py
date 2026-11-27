@@ -598,6 +598,16 @@ def test_gui_wifi_form_saves_two_accesspoints(tmp_path):
     assert cfg.wifi.aps[1].width == "80"
 
 
+def test_gui_wifi_page_has_country_dropdown(tmp_path):
+    client, _ = make_client(tmp_path)
+    page = client.get("/wifi").data
+    assert b'<select name="wifi_country">' in page
+    assert b'<option value="BE"' in page
+    assert b'<option value="NL"' in page
+    assert b'<option value="00"' in page
+    assert b'name="wifi_country" maxlength' not in page
+
+
 def test_gui_wifi_page_uses_one_shared_network_name(tmp_path, monkeypatch):
     from bassierouter import services
 

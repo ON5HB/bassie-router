@@ -50,6 +50,7 @@ from .config import (
     Config,
     ConfigError,
     DhcpReservation,
+    WIFI_COUNTRIES,
     WifiAp,
     config_path,
     load_config,
@@ -780,7 +781,12 @@ def create_app(
                 result = save_and_apply(cfg, "wifi")
                 if result:
                     return result
-        return render_template("wifi.html", cfg=cfg, wifi_rows=wifi_rows(cfg))
+        return render_template(
+            "wifi.html",
+            cfg=cfg,
+            wifi_rows=wifi_rows(cfg),
+            wifi_countries=WIFI_COUNTRIES,
+        )
 
     @app.route("/firewall", methods=["GET", "POST"])
     def firewall() -> str:

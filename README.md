@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.66
+Versie: 0.1.67
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -359,6 +359,8 @@ alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
 
 - Eén **netwerknaam (SSID)** en **wachtwoord** voor alle radio's, zodat clients
   zelf de beste band kiezen (dualband).
+- De **landcode** kies je uit een dropdown met alle ISO 3166-1-codes;
+  `00` betekent wereldwijd. Standaard: `BE`.
 - De router telt de radio's die echt aanwezig zijn: bij **één dongle** krijg je
   één rij en kies je zelf de band; bij **twee dongles** krijg je twee rijen,
   elke band apart instelbaar en apart aan/uit te zetten.

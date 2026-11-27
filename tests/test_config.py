@@ -15,6 +15,17 @@ def test_default_config_is_valid():
     assert validate(Config()) == []
 
 
+def test_wifi_country_must_be_known_code():
+    cfg = Config()
+    cfg.wifi.enabled = True
+    cfg.wifi.ssid = "Bassie"
+    cfg.wifi.password = "wachtwoord123"
+    cfg.wifi.country = "ZZ"
+    assert "wifi: onbekende landcode" in validate(cfg)
+    cfg.wifi.country = "00"
+    assert validate(cfg) == []
+
+
 def test_wan_vlan_derived_name():
     cfg = Config()
     cfg.interfaces.wan_vlan_id = 6
