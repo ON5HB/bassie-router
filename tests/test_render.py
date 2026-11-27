@@ -461,6 +461,11 @@ def test_hostapd_conf_uses_selected_width():
     assert "HT40" not in text
     text = render_hostapd_conf(cfg, "wlx0", "2.4", 11, "40")
     assert "ht_capab=[HT40-]" in text
+    # Kanaal 6 werkt met HT40-, niet met HT40+ (dan terug naar 20 MHz).
+    text = render_hostapd_conf(cfg, "wlx0", "2.4", 6, "40")
+    assert "ht_capab=[HT40-]" in text
+    text = render_hostapd_conf(cfg, "wlx0", "2.4", 1, "40")
+    assert "ht_capab=[HT40+]" in text
     text = render_hostapd_conf(cfg, "wlx1", "5", 36, "80")
     assert "ht_capab=[HT40+]" in text
     assert "vht_oper_chwidth=1" in text
@@ -468,6 +473,26 @@ def test_hostapd_conf_uses_selected_width():
     text = render_hostapd_conf(cfg, "wlx1", "5", 149, "160")
     assert "vht_oper_chwidth=2" in text
     assert "vht_oper_centr_freq_seg0_idx=163" in text
+
+
+def test_wifi_width_menu_follows_dongle_capabilities():
+    from bassierouter.services import capabilities_from_iw_output, width_choices
+
+    caps = capabilities_from_iw_output(
+        "  Capabilities: 0x196f\n"
+        "\tHT20/HT40\n"
+        "\tVHT Capabilities (0x03d071b2):\n"
+        "\tSupported Channel Width: neither 160 nor 80+80\n"
+    )
+    assert caps == {"ht40", "vht80"}
+    assert width_choices(caps) == (["20", "40"], ["20", "40", "80"])
+    caps160 = capabilities_from_iw_output(
+        "HT20/HT40\nVHT Capabilities\nSupported Channel Width: 160 MHz\n"
+    )
+    assert "vht160" in caps160
+    assert "160" in width_choices(caps160)[1]
+    # Zonder iw blijven alle keuzes zichtbaar.
+    assert width_choices(set()) == (["20", "40"], ["20", "40", "80", "160"])
 
 
 def test_wifi_plan_skips_disabled_and_removed_radios(monkeypatch):

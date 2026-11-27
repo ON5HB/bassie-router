@@ -612,7 +612,24 @@ def test_gui_wifi_page_has_channel_and_width_dropdowns(tmp_path, monkeypatch):
     assert b'name="wifi_width_24_1"' in page
     assert b'name="wifi_width_5_2"' in page
     assert b'0 = autokanaal' in page
-    assert b'De radio komt op de bridge' in page
+    assert page.count(b'De radio komt op de bridge') == 1
+
+
+def test_gui_wifi_width_menu_uses_dongle_capabilities(tmp_path, monkeypatch):
+    from bassierouter import services
+
+    monkeypatch.setattr(
+        services, "detect_wireless_interfaces", lambda: ["wlx0"]
+    )
+    monkeypatch.setattr(services, "wifi_bands", lambda iface: ["2.4", "5"])
+    monkeypatch.setattr(
+        services, "wifi_capabilities", lambda iface: {"ht40", "vht80"}
+    )
+    client, _ = make_client(tmp_path)
+    page = client.get("/wifi").data
+    assert b'<option value="40"' in page
+    assert b'<option value="80"' in page
+    assert b'<option value="160"' not in page
 
 
 def test_gui_pppoe_form_allows_zero_idle_seconds(tmp_path):

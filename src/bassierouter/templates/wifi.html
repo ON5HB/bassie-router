@@ -12,7 +12,7 @@
     <p><label class="inline"><input type="checkbox" name="wifi_enabled" {{ 'checked' if cfg.wifi.enabled }}> Wifi inschakelen (standaard uit)</label></p>
     <div class="row">
       <label>Netwerknaam (SSID) <input name="wifi_ssid" maxlength="32" value="{{ cfg.wifi.ssid }}"></label>
-      <label>Wachtwoord (minimaal 8 tekens) <input name="wifi_password" type="password" value="{{ cfg.wifi.password }}"></label>
+      <label>Wachtwoord (minimaal 8 tekens) <input name="wifi_password" value="{{ cfg.wifi.password }}"></label>
       <label>Landcode <input name="wifi_country" maxlength="2" value="{{ cfg.wifi.country }}"></label>
     </div>
     <p class="hint">Alle radio's gebruiken dezelfde netwerknaam en wachtwoord, zodat apparaten automatisch de beste band kiezen.</p>
@@ -32,33 +32,32 @@
           <option value="5" {{ 'selected' if row.band == '5' }}>5 GHz</option>
         </select>
       </label>
-      <label>Kanaal 2,4 GHz
+      <label>Kanaal
         <select name="wifi_channel_24_{{ row.index }}" data-wifi-channel="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
           {% for ch in channels_24 %}<option value="{{ ch }}" {{ 'selected' if selected_24 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
         </select>
       </label>
-      <label>Kanaal 5 GHz
+      <label>Kanaal
         <select name="wifi_channel_5_{{ row.index }}" data-wifi-channel="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
           {% for ch in channels_5 %}<option value="{{ ch }}" {{ 'selected' if selected_5 == ch }}>{{ ch }}{% if ch == 0 %} = autokanaal{% endif %}</option>{% endfor %}
         </select>
       </label>
-      <label>Bandbreedte 2,4 GHz
+      <label>Bandbreedte
         <select name="wifi_width_24_{{ row.index }}" data-wifi-width="24" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '2.4' }}>
-          <option value="20" {{ 'selected' if row.width == '20' }}>20 MHz</option>
-          <option value="40" {{ 'selected' if row.width in ('', '40') }}>40 MHz</option>
+          {% for w in row.widths_24 %}<option value="{{ w }}" {{ 'selected' if row.width_24 == w }}>{{ w }} MHz</option>{% endfor %}
         </select>
       </label>
-      <label>Bandbreedte 5 GHz
+      <label>Bandbreedte
         <select name="wifi_width_5_{{ row.index }}" data-wifi-width="5" data-wifi-index="{{ row.index }}" {{ 'disabled' if row.band != '5' }}>
-          <option value="20" {{ 'selected' if row.width == '20' }}>20 MHz</option>
-          <option value="40" {{ 'selected' if row.width == '40' }}>40 MHz</option>
-          <option value="80" {{ 'selected' if row.width in ('', '80') }}>80 MHz</option>
-          <option value="160" {{ 'selected' if row.width == '160' }}>160 MHz</option>
+          {% for w in row.widths_5 %}<option value="{{ w }}" {{ 'selected' if row.width_5 == w }}>{{ w }} MHz</option>{% endfor %}
         </select>
       </label>
     </div>
+    {% if row.index == 1 %}
     <p class="hint">{% if row.bands %}Band(en) van deze radio: {{ row.bands|join(' en ') }} GHz.{% else %}Band niet bekend; installeer <code>iw</code> en kijk dan opnieuw.{% endif %}
-      Kanaal <code>0</code> = autokanaal; op 5 GHz gebruikt de router dan kanaal <code>36</code>. 80 MHz kan op kanaal 36-48 of 149-161, 160 MHz op 149-161. De radio komt op de bridge <code>switch</code>.</p>
+      Kanaal <code>0</code> = autokanaal; op 5 GHz gebruikt de router dan kanaal <code>36</code>. 80 MHz kan op kanaal 36-48 of 149-161, 160 MHz op 149-161. Alleen breedtes die de dongle aankan staan in het menu. De radio komt op de bridge <code>switch</code>.</p>
+    <p class="hint">40 MHz op 2,4 GHz is niet gebruikelijk: het deelt twee kanalen met buren en langzamere clients kunnen er last van hebben. Bij tegenvallende snelheid kun je beter 20 MHz kiezen. De router zakt zelf terug naar 20 MHz als de omgeving of de dongle 40 MHz niet toestaat.</p>
+    {% endif %}
   </section>
   {% else %}
   <p class="hint">Geen draadloze NIC gevonden.</p>

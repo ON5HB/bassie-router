@@ -691,14 +691,24 @@ def wifi_rows(cfg: Config) -> list[dict[str, object]]:
     ):
         ap = _saved_wifi_ap(cfg, iface)
         band, channel, width = _wifi_defaults(index)
+        widths_24, widths_5 = width_choices(wifi_capabilities(iface))
+        saved = ap.width if ap else width
         rows.append({
             "index": index,
             "interface": iface,
             "enabled": ap.enabled if ap else True,
             "band": ap.band if ap else band,
             "channel": ap.channel if ap else channel,
-            "width": ap.width if ap else width,
+            "width": saved,
             "bands": wifi_bands(iface),
+            "widths_24": widths_24,
+            "widths_5": widths_5,
+            "width_24": saved if ap and ap.band == "2.4" else (
+                "40" if "40" in widths_24 else "20"
+            ),
+            "width_5": saved if ap and ap.band == "5" else next(
+                (w for w in ("80", "40", "20") if w in widths_5), "20"
+            ),
         })
     return rows
 
@@ -740,30 +750,69 @@ def bands_from_iw_output(text: str) -> list[str]:
     return [band for band in ("2.4", "5", "6") if band in bands]
 
 
-def wifi_bands(interface: str) -> list[str]:
-    """Banden die de NIC volgens `iw` ondersteunt (informatief)."""
+def _iw_phy_info(interface: str) -> str:
+    """Ruwe `iw phy ... info` voor een NIC; leeg als iw er niet is."""
     if not interface:
-        return []
+        return ""
     try:
         phy = (
             Path("/sys/class/net") / interface / "phy80211" / "name"
         ).read_text(encoding="utf-8").strip()
     except OSError:
-        return []
+        return ""
     if not phy:
-        return []
+        return ""
     iw = next(
         (path for path in ("/usr/sbin/iw", "/usr/bin/iw") if Path(path).exists()), ""
     )
     if not iw:
-        return []
+        return ""
     try:
         result = subprocess.run(
             [iw, "phy", phy, "info"], capture_output=True, text=True, timeout=5, check=False
         )
     except (OSError, subprocess.SubprocessError):
-        return []
-    return bands_from_iw_output(result.stdout)
+        return ""
+    return result.stdout
+
+
+def capabilities_from_iw_output(text: str) -> set[str]:
+    """HT40/VHT80/VHT160 uit `iw phy ... info`."""
+    caps: set[str] = set()
+    for line in text.splitlines():
+        line = line.strip()
+        if "HT20/HT40" in line:
+            caps.add("ht40")
+        if line.startswith("VHT Capabilities"):
+            caps.add("vht80")
+        if line.startswith("Supported Channel Width") and "neither" not in line:
+            caps.add("vht160")
+    return caps
+
+
+def wifi_bands(interface: str) -> list[str]:
+    """Banden die de NIC volgens `iw` ondersteunt (informatief)."""
+    return bands_from_iw_output(_iw_phy_info(interface))
+
+
+def wifi_capabilities(interface: str) -> set[str]:
+    """Breedtes die de NIC volgens `iw` aankan (informatief)."""
+    return capabilities_from_iw_output(_iw_phy_info(interface))
+
+
+def width_choices(caps: set[str]) -> tuple[list[str], list[str]]:
+    """Kiesbare breedtes voor 2,4 en 5 GHz; alles bij onbekende caps."""
+    if not caps:
+        return ["20", "40"], ["20", "40", "80", "160"]
+    widths_24 = ["20"] + (["40"] if "ht40" in caps else [])
+    widths_5 = ["20"]
+    if "ht40" in caps:
+        widths_5.append("40")
+    if "vht80" in caps:
+        widths_5.append("80")
+    if "vht160" in caps:
+        widths_5.append("160")
+    return widths_24, widths_5
 
 
 def vht_center(channel: int, width: str) -> int | None:
@@ -807,9 +856,11 @@ def render_hostapd_conf(
     ]
     if channel:
         lines.insert(7, f"channel={channel}")
-    if width in ("40", "80", "160") and channel:
+    if width in ("40", "80") and channel:
         if band == "2.4":
-            direction = "HT40+" if channel <= 7 else "HT40-"
+            # HT40- gebruikt op kanaal 6 het vrije kanaal 2 als tweede kanaal;
+            # HT40+ pakte kanaal 10 en zakte daardoor terug naar 20 MHz.
+            direction = "HT40+" if channel <= 4 else "HT40-"
         else:
             direction = "HT40+"
         lines.append(f"ht_capab=[{direction}][SHORT-GI-20][SHORT-GI-40]")

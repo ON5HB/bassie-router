@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.64 — 2026-11-27
+
+- Wifi: HT40- op 2,4 GHz, bandbreedte-menu naar dongle-capabilities, korte velden en zichtbaar wachtwoord
+
 ## 0.1.63 — 2026-11-27
 
 - Wifi: kanalen en bandbreedte per band als dropdown, radio apart aan/uit, DHCP-kolom Via en tekst Negeren aangepast

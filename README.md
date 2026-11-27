@@ -1,6 +1,6 @@
 # Bassie-Router
 
-Versie: 0.1.63
+Versie: 0.1.64
 
 IPv4-router op Debian 13 (Trixie), AMD64-PC, volledig via CLI en HTTP-GUI te beheren.
 
@@ -367,8 +367,13 @@ alleen als je een of twee draadloze NIC's hebt, verschijnen er rijen.
   zet de router bij `0` kanaal `36` in, omdat hostapd met kanaal `0` op 5 GHz
   geen frequentie kan bepalen. Standaard: `11` / `36`.
 - Bandbreedte per band: **2,4 GHz** kiest uit 20 of 40 MHz, **5 GHz** uit 20,
-  40, 80 of 160 MHz. 80 MHz kan op kanaal 36-48 of 149-161, 160 MHz op
-  149-161. Standaard: 40 / 80 MHz.
+  40, 80 of 160 MHz. Het menu toont alleen wat de dongle volgens `iw` aankan;
+  zonder `iw` blijven alle keuzes zichtbaar. 80 MHz kan op kanaal 36-48 of
+  149-161, 160 MHz op 149-161. Standaard: 40 / 80 MHz.
+- 40 MHz op 2,4 GHz is niet gebruikelijk: het gebruikt twee kanalen en kan
+  botsen met buren. Bij kanaal 6 gebruikt de router `HT40-` (secundair kanaal
+  2), omdat `HT40+` (kanaal 10) hier terugviel naar 20 MHz. De router zakt
+  zelf terug naar 20 MHz als de omgeving of de dongle 40 MHz niet toestaat.
 - De NIC's komen op de bridge `switch`: wifi-clients krijgen IP, DNS en DHCP
   uit hetzelfde LAN als de bekabelde poorten. Er komen geen extra firewall-
   regels bij.
